@@ -40,6 +40,10 @@ interface Actions {
   updateAISettings: (settings: Partial<AISettings>) => void
   setApiKey: (providerId: ProviderId, key: string) => void
 
+  // active source & module
+  setActiveSource: (moduleId: string, sourceId: string) => void
+  setActiveModule: (moduleId: string | null) => void
+
   // custom models
   setProviderModels: (providerId: ProviderId, models: ModelOption[]) => void
   addProviderModel: (providerId: ProviderId, model: ModelOption) => void
@@ -103,6 +107,8 @@ export const useStore = create<AppState & Actions>()(
       activeChapterId: null,
       activeSubChapterId: null,
       aiSettings: DEFAULT_SETTINGS,
+      activeSourceIds: {},
+      activeModuleId: null,
 
       // --- chapter ---
       addChapter: () =>
@@ -207,9 +213,19 @@ export const useStore = create<AppState & Actions>()(
 
       // --- draft sources ---
       addDraftSource: (chapterId, subChapterId, moduleId) =>
-        set(s => ({
-          chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs => [...srcs, makeSource()]),
-        })),
+        set(s => {
+          const newSource = makeSource()
+          return {
+            chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs => [...srcs, newSource]),
+            activeSourceIds: { ...s.activeSourceIds, [moduleId]: newSource.id },
+          }
+        }),
+
+      setActiveSource: (moduleId, sourceId) =>
+        set(s => ({ activeSourceIds: { ...s.activeSourceIds, [moduleId]: sourceId } })),
+
+      setActiveModule: (moduleId) =>
+        set({ activeModuleId: moduleId }),
 
       removeDraftSource: (chapterId, subChapterId, moduleId, sourceId) =>
         set(s => ({
