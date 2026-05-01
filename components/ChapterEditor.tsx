@@ -134,36 +134,79 @@ export default function ChapterEditor() {
     </div>
   )
 
+  const activeSub = activeSubChapterId ? chapter.subChapters.find(s => s.id === activeSubChapterId) : null
+  const totalModules = chapter.modules.length + chapter.subChapters.reduce((n, s) => n + s.modules.length, 0)
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--ws-bg)' }}>
       {/* Top bar */}
       <div style={{
-        flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 32px', height: 50,
+        flexShrink: 0, display: 'flex', alignItems: 'center',
+        padding: '0 32px', height: 48,
         background: 'var(--ws-topbar)', borderBottom: '1px solid var(--divider)',
+        gap: 0,
       }}>
-        {/* Column labels */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingLeft: 28 }}>
-          {['底稿', '报告'].map(l => (
-            <span key={l} style={{ fontSize: 11, fontWeight: 700, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</span>
+        {/* Breadcrumb */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--t4)', flexShrink: 0 }}>
+            <path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t2)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {chapter.title}
+          </span>
+          {activeSub && (
+            <>
+              <span style={{ color: 'var(--t4)', fontSize: 15, lineHeight: 1, marginTop: -1 }}>›</span>
+              <span style={{ fontSize: 12.5, color: 'var(--t3)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeSub.title}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 16, background: 'var(--divider)', margin: '0 16px', flexShrink: 0 }} />
+
+        {/* Column labels — offset 30px to align with content grid (gutter 20px + gap 10px) */}
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 30 }}>
+          {[
+            { label: '底稿', hint: '来源 · 截图 · 备注' },
+            { label: '报告', hint: 'AI 续写 · 图表' },
+          ].map(({ label, hint }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--t4)' }}>{hint}</span>
+            </div>
           ))}
         </div>
-        {/* Export */}
-        <button onClick={exportMd}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '5px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500,
-            background: 'transparent', color: 'var(--t3)',
-            border: '1px solid var(--divider)', cursor: 'pointer', transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--t1)'; el.style.borderColor = 'rgba(0,0,0,0.18)' }}
-          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--divider)' }}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          导出 MD
-        </button>
+
+        {/* Right actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          {/* Module count */}
+          <span style={{
+            fontSize: 11.5, color: 'var(--t4)',
+            background: 'var(--ws-bg)', border: '1px solid var(--divider)',
+            padding: '3px 9px', borderRadius: 20,
+          }}>
+            {totalModules} 个模块
+          </span>
+          {/* Export */}
+          <button onClick={exportMd}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500,
+              background: 'transparent', color: 'var(--t3)',
+              border: '1px solid var(--divider)', cursor: 'pointer', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--t1)'; el.style.borderColor = 'rgba(0,0,0,0.18)' }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--divider)' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            导出 MD
+          </button>
+        </div>
       </div>
 
       {/* Scrollable content */}
