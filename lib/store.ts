@@ -335,9 +335,9 @@ export const useStore = create<AppState & Actions>()(
       version: 5,
       // activeSourceId / activeModuleId are ephemeral UI state — don't persist
       partialize: (s) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { activeSourceId, activeModuleId, ...rest } = s
-        return rest
+        const { activeSourceId: _a, activeModuleId: _b, ...rest } = s
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return rest as any
       },
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>

@@ -8,14 +8,14 @@ import { fileToCompressedDataUrl } from '@/lib/imageUtils'
 import { streamAI } from '@/lib/ai'
 
 const inp = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-  width: '100%', background: 'var(--bg-input)', color: 'var(--t2)',
-  border: '1px solid var(--b1)', borderRadius: 8, fontSize: 13,
+  width: '100%', background: 'var(--input-bg)', color: 'var(--t2)',
+  border: '1px solid var(--input-border)', borderRadius: 8, fontSize: 13,
   padding: '8px 11px', fontFamily: 'var(--font)', outline: 'none',
   transition: 'border-color 0.15s, box-shadow 0.15s', ...extra,
 })
 const focus = (el: HTMLElement, on: boolean) => {
-  el.style.borderColor = on ? 'var(--blue-border)' : 'var(--b1)'
-  el.style.boxShadow = on ? '0 0 0 3px var(--blue-bg)' : 'none'
+  el.style.borderColor = on ? 'var(--accent-border)' : 'var(--input-border)'
+  el.style.boxShadow = on ? 'var(--input-focus-shadow)' : 'none'
 }
 
 const EXPAND_PROMPT = `你是一位专业的金融研究分析师，擅长撰写研究报告。请根据用户提供的观点和底稿材料，用专业、简洁、有说服力的语言续写研究报告段落。要求：语言专业，符合研究报告风格；逻辑清晰，有据可查；直接输出报告内容，不要加说明性前缀；如果提供了参考资料链接，请基于这些材料进行分析和撰写；如果提供了截图备注，请结合截图中的信息进行分析。`
@@ -51,11 +51,11 @@ function Badge({ label, color }: { label: string; color: 'blue' | 'purple' }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px',
       borderRadius: 20, marginLeft: 8,
-      background: isBlue ? 'var(--blue-bg)' : 'rgba(191,90,242,0.12)',
+      background: isBlue ? 'var(--accent-light)' : 'rgba(191,90,242,0.12)',
       fontSize: 11, fontWeight: 500,
-      color: isBlue ? 'var(--blue-hover)' : '#bf5af2',
+      color: isBlue ? 'var(--accent-hover)' : '#bf5af2',
     }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: isBlue ? 'var(--blue)' : '#bf5af2', animation: 'blink 1.5s infinite' }} />
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: isBlue ? 'var(--accent)' : '#bf5af2', animation: 'blink 1.5s infinite' }} />
       {label}
     </span>
   )
@@ -76,8 +76,9 @@ function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; s
       style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         padding: 12, borderRadius: 12, minHeight: 120, cursor: 'pointer',
-        background: 'var(--bg-3)', border: `1px solid ${isActive ? 'rgba(191,90,242,0.35)' : 'var(--b1)'}`,
-        boxShadow: isActive ? '0 0 0 3px rgba(191,90,242,0.1)' : 'none',
+        background: 'var(--card)',
+        border: `1px solid ${isActive ? 'rgba(191,90,242,0.35)' : 'transparent'}`,
+        boxShadow: isActive ? '0 0 0 3px rgba(191,90,242,0.1), var(--card-shadow)' : 'var(--card-shadow)',
         transition: 'all 0.15s',
       }}
     >
@@ -94,7 +95,7 @@ function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; s
 
       {report.chartImage ? (
         <div style={{ position: 'relative' }} className="group/c">
-          <img src={report.chartImage} alt="图表" style={{ width: '100%', borderRadius: 8, objectFit: 'contain', maxHeight: 240, border: '1px solid var(--b1)', display: 'block' }} />
+          <img src={report.chartImage} alt="图表" style={{ width: '100%', borderRadius: 8, objectFit: 'contain', maxHeight: 240, border: '1px solid var(--input-border)', display: 'block' }} />
           <button onClick={() => updateReport(chapterId, subChapterId, module.id, { chartImage: undefined })}
             className="opacity-0 group-hover/c:opacity-100 transition-opacity"
             style={{ position: 'absolute', top: 8, right: 8, background: 'var(--red)', color: 'white', fontSize: 11, padding: '2px 8px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>删除</button>
@@ -164,13 +165,14 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
       style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         padding: 12, borderRadius: 12, minHeight: 120, cursor: 'text',
-        background: 'var(--bg-3)', border: `1px solid ${isActive ? 'var(--blue-border)' : 'var(--b1)'}`,
-        boxShadow: isActive ? '0 0 0 3px var(--blue-bg)' : 'none',
+        background: 'var(--card)',
+        border: `1px solid ${isActive ? 'var(--accent-border)' : 'transparent'}`,
+        boxShadow: isActive ? 'var(--card-shadow-active)' : 'var(--card-shadow)',
         transition: 'all 0.15s',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: isActive ? 'var(--blue)' : 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: isActive ? 'var(--accent)' : 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
           报告{isActive && <Badge label="当前" color="blue" />}
         </span>
       </div>
@@ -191,33 +193,33 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
           style={inp()} onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
         {loading === 'expand' ? (
           <button onClick={() => abort.current?.abort()}
-            style={{ ...btnBase, background: 'var(--red-bg)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
+            style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
         ) : (
           <button onClick={() => run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content))}
             disabled={loading !== null || !viewpoint.trim()}
-            style={{ ...btnBase, background: 'var(--blue)', color: 'white', opacity: (loading !== null || !viewpoint.trim()) ? 0.45 : 1 }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'var(--blue-hover)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--blue)' }}
+            style={{ ...btnBase, background: 'var(--accent)', color: 'white', opacity: (loading !== null || !viewpoint.trim()) ? 0.45 : 1 }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'var(--accent-hover)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
           >AI 续写</button>
         )}
       </div>
 
       {/* 从底稿生成 */}
       {hasSources && (
-        <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--sep)' }}>
+        <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
           <input type="text" placeholder="额外指令（可选）" value={instruction}
             onChange={e => setInstruction(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content)) }}
             style={inp()} onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
           {loading === 'generate' ? (
             <button onClick={() => abort.current?.abort()}
-              style={{ ...btnBase, background: 'var(--red-bg)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
+              style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
           ) : (
             <button onClick={() => run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content))}
               disabled={loading !== null}
-              style={{ ...btnBase, background: 'var(--green-bg)', border: '1px solid var(--green-border)', color: 'var(--green)', opacity: loading !== null ? 0.45 : 1 }}
-              onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'rgba(50,215,75,0.2)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--green-bg)' }}
+              style={{ ...btnBase, background: 'var(--green-light)', border: '1px solid var(--green-border)', color: 'var(--green)', opacity: loading !== null ? 0.45 : 1 }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'rgba(40,205,65,0.2)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--green-light)' }}
             >从底稿生成</button>
           )}
         </div>

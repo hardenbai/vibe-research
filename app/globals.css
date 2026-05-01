@@ -1,65 +1,76 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens ───────────────────────────────────────────── */
 :root {
-  /* Clear surface hierarchy — each level visibly distinct */
-  --bg-0: #080808;      /* deepest base */
-  --bg-1: #141414;      /* sidebar */
-  --bg-2: #1e1e1e;      /* workspace */
-  --bg-3: #282828;      /* card surface */
-  --bg-4: #323232;      /* elevated / hover */
-  --bg-input: #111111;  /* inputs sink below cards */
+  /* ── Sidebar (dark) ──────────────────────────────── */
+  --sidebar-bg:      #111111;
+  --sidebar-hover:   rgba(255,255,255,0.07);
+  --sidebar-active:  rgba(10,132,255,0.18);
+  --sidebar-border:  rgba(255,255,255,0.07);
 
-  /* Accent — Apple product-page blue, vivid and confident */
-  --blue:        #0a84ff;
-  --blue-hover:  #409cff;
-  --blue-bg:     rgba(10, 132, 255, 0.14);
-  --blue-border: rgba(10, 132, 255, 0.35);
+  /* ── Main workspace (light) ─────────────────────── */
+  --ws-bg:           #f5f5f7;   /* Apple's light gray */
+  --ws-topbar:       #ffffff;
 
-  /* Status colors */
-  --green:        #32d74b;
-  --green-bg:     rgba(50, 215, 75, 0.12);
-  --green-border: rgba(50, 215, 75, 0.28);
-  --red:          #ff453a;
-  --red-bg:       rgba(255, 69, 58, 0.12);
-  --red-border:   rgba(255, 69, 58, 0.28);
+  /* ── Cards (pure white, elevated) ──────────────── */
+  --card:            #ffffff;
+  --card-shadow:     0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
+  --card-shadow-active: 0 0 0 2px var(--accent), 0 4px 16px rgba(10,132,255,0.12);
 
-  /* Text — high contrast, actually readable */
-  --t1: #ffffff;    /* headings, key content */
-  --t2: #e0e0e0;    /* body text — 9:1 on --bg-3 */
-  --t3: #a0a0a0;    /* secondary — 5.5:1 on --bg-3 */
-  --t4: #606060;    /* hints / labels — for large text only */
+  /* ── Input fields ────────────────────────────────── */
+  --input-bg:        #f5f5f7;
+  --input-border:    rgba(0,0,0,0.12);
+  --input-focus-shadow: 0 0 0 3px rgba(10,132,255,0.18);
 
-  /* Borders */
-  --b1: rgba(255, 255, 255, 0.10);  /* default */
-  --b2: rgba(255, 255, 255, 0.16);  /* medium */
-  --b3: rgba(255, 255, 255, 0.24);  /* strong */
-  --sep: rgba(255, 255, 255, 0.06); /* separator */
+  /* ── Accent ──────────────────────────────────────── */
+  --accent:          #0071e3;   /* Apple's product blue */
+  --accent-hover:    #0077ed;
+  --accent-light:    rgba(0,113,227,0.1);
+  --accent-border:   rgba(0,113,227,0.35);
 
-  /* Typography */
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-          "SF Pro Text", "Helvetica Neue", sans-serif;
+  /* ── Status ──────────────────────────────────────── */
+  --green:           #28cd41;
+  --green-light:     rgba(40,205,65,0.1);
+  --green-border:    rgba(40,205,65,0.3);
+  --red:             #ff3b30;
+  --red-light:       rgba(255,59,48,0.1);
+  --red-border:      rgba(255,59,48,0.3);
+
+  /* ── Text on light backgrounds ───────────────────── */
+  --t1:  #1d1d1f;   /* Apple's primary text, near-black */
+  --t2:  #3d3d3f;   /* secondary */
+  --t3:  #6e6e73;   /* tertiary / labels */
+  --t4:  #aeaeb2;   /* placeholder / disabled */
+
+  /* ── Text on dark sidebar ────────────────────────── */
+  --st1: #f5f5f7;
+  --st2: #aeaeb2;
+  --st3: #636366;
+
+  /* ── Dividers (light context) ────────────────────── */
+  --divider: rgba(0,0,0,0.08);
+
+  /* ── Fonts ───────────────────────────────────────── */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Helvetica Neue", Arial, sans-serif;
   --mono: "SF Mono", ui-monospace, "Fira Code", monospace;
 }
 
-/* ─── Tailwind ─────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--bg-0);
+  --color-background: var(--ws-bg);
   --color-foreground: var(--t1);
   --font-sans: var(--font);
   --font-mono: var(--mono);
 }
 
-/* ─── Base ─────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
 
 body {
-  background: var(--bg-0);
-  color: var(--t2);
+  background: var(--ws-bg);
+  color: var(--t1);
   font-family: var(--font);
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
 }
@@ -67,19 +78,22 @@ body {
 textarea { resize: none; }
 input:focus, textarea:focus, select:focus { outline: none; }
 
-/* ─── Scrollbar ────────────────────────────────────────────────── */
+/* Thin scrollbar for light context */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--b3); }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
 
-/* ─── Animations ───────────────────────────────────────────────── */
+/* Sidebar scrollbar stays dark */
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
+.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes blink {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+  50% { opacity: 0.35; }
 }
-.fade-up { animation: fadeUp 0.22s cubic-bezier(.22,1,.36,1) both; }
+.fade-up { animation: fadeUp 0.2s cubic-bezier(.22,1,.36,1) both; }
