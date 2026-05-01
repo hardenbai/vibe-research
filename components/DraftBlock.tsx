@@ -1,7 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useStore } from '@/lib/store'
+import { captureScreenshot } from '@/lib/screenCapture'
+import { setActiveCaptureHandler } from '@/lib/activeCapture'
 import type { Module, DraftSource } from '@/lib/types'
 
 interface Props {
@@ -19,9 +21,37 @@ interface SourceCardProps extends Props {
 function SourceCard({ chapterId, subChapterId, module, source, index, total }: SourceCardProps) {
   const { updateDraftSource, removeDraftSource } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
+  const [capturing, setCapturing] = useState(false)
 
   const update = (data: Partial<DraftSource>) =>
     updateDraftSource(chapterId, subChapterId, module.id, source.id, data)
+
+  const applyCapture = (imageBase64: string, url: string) => {
+    update({ imageBase64, ...(url ? { url } : {}) })
+  }
+
+  // Register as active capture target on focus/hover
+  const handleFocus = () => setActiveCaptureHandler(applyCapture)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => setActiveCaptureHandler(null)
+  }, [])
+
+  // Paste image from clipboard
+  const handlePaste = (e: React.ClipboardEvent) => {
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (!file) continue
+        const reader = new FileReader()
+        reader.onload = ev => update({ imageBase64: ev.target?.result as string })
+        reader.readAsDataURL(file)
+        return
+      }
+    }
+  }
 
   const handleImage = (file: File) => {
     const reader = new FileReader()
@@ -35,19 +65,35 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total }: S
     if (file?.type.startsWith('image/')) handleImage(file)
   }
 
+  const handleCapture = async () => {
+    setActiveCaptureHandler(applyCapture)
+    setCapturing(true)
+    const result = await captureScreenshot()
+    setCapturing(false)
+    if (result) applyCapture(result.imageBase64, result.url)
+  }
+
   return (
-    <div className="flex flex-col gap-2 p-2.5 bg-gray-750 rounded-lg border border-gray-600 relative group/card">
-      {/* Source index + remove */}
+    <div
+      className="flex flex-col gap-2 p-2.5 bg-gray-750 rounded-lg border border-gray-600 relative group/card"
+      onFocus={handleFocus}
+      onMouseEnter={handleFocus}
+      onPaste={handlePaste}
+    >
+      {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">
           来源 {index + 1}
         </span>
-        {total > 1 && (
-          <button
-            onClick={() => removeDraftSource(chapterId, subChapterId, module.id, source.id)}
-            className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover/card:opacity-100 transition-opacity"
-          >✕</button>
-        )}
+        <div className="flex items-center gap-1">
+          <span className="text-gray-700 text-[10px]">⌘⇧S 捕获</span>
+          {total > 1 && (
+            <button
+              onClick={() => removeDraftSource(chapterId, subChapterId, module.id, source.id)}
+              className="text-gray-600 hover:text-red-400 text-xs opacity-0 group-hover/card:opacity-100 transition-opacity"
+            >✕</button>
+          )}
+        </div>
       </div>
 
       {/* URL */}
@@ -66,7 +112,7 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total }: S
         </a>
       )}
 
-      {/* Screenshot */}
+      {/* Screenshot area */}
       {source.imageBase64 ? (
         <div className="relative group/img">
           <img src={source.imageBase64} alt="截图"
@@ -78,15 +124,25 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total }: S
         </div>
       ) : (
         <div
-          onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+          onDrop={handleDrop}
+          onDragOver={e => e.preventDefault()}
           onClick={() => fileRef.current?.click()}
-          className="border border-dashed border-gray-600 rounded py-2 text-center text-gray-600 text-xs cursor-pointer hover:border-blue-500 hover:text-blue-400 transition-colors"
+          className="border border-dashed border-gray-600 rounded py-2 text-center text-gray-600 text-xs cursor-pointer hover:border-blue-500 hover:text-blue-400 transition-colors select-none"
         >
-          点击或拖拽截图
+          点击上传 / 拖拽 / ⌘V 粘贴
           <input ref={fileRef} type="file" accept="image/*" className="hidden"
             onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }} />
         </div>
       )}
+
+      {/* Capture button */}
+      <button
+        onClick={handleCapture}
+        disabled={capturing}
+        className="w-full py-1 border border-dashed border-gray-700 hover:border-blue-500 text-gray-600 hover:text-blue-400 text-xs rounded transition-colors disabled:opacity-50"
+      >
+        {capturing ? '选择捕获区域...' : '📷 捕获当前屏幕'}
+      </button>
 
       {/* Note */}
       <textarea
@@ -117,7 +173,6 @@ export default function DraftBlock({ chapterId, subChapterId, module }: Props) {
           total={sources.length}
         />
       ))}
-
       <button
         onClick={() => addDraftSource(chapterId, subChapterId, module.id)}
         className="w-full py-1.5 border border-dashed border-gray-600 hover:border-blue-500 text-gray-600 hover:text-blue-400 text-xs rounded-lg transition-colors"

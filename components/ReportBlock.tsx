@@ -142,43 +142,67 @@ function ChartModule({ chapterId, subChapterId, module }: Props) {
 function TextModule({ chapterId, subChapterId, module }: Props) {
   const { updateReport, aiSettings } = useStore()
   const [viewpoint, setViewpoint] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [instruction, setInstruction] = useState('')
+  const [loading, setLoading] = useState<'expand' | 'generate' | null>(null)
   const [error, setError] = useState('')
   const { report, draft } = module
 
+  const sources = draft.sources ?? []
+  const draftNotes = sources.map(s => s.note).filter(Boolean).join('\n')
+  const draftUrls = sources.map(s => s.url).filter(Boolean).join('\n')
+  const hasDraftContent = draftNotes || draftUrls
+
+  const callAI = async (userPrompt: string) => {
+    const apiKey = aiSettings.apiKeys[aiSettings.providerId]
+    if (!apiKey) throw new Error('请先在 AI 设置中填入 API Key')
+    const provider = PROVIDER_CONFIGS.find(p => p.id === aiSettings.providerId)
+    if (aiSettings.providerId === 'anthropic') {
+      return callAnthropic(apiKey, aiSettings.modelId, userPrompt)
+    }
+    return callOpenAICompat(apiKey, aiSettings.modelId, provider?.baseUrl, userPrompt)
+  }
+
+  const append = (content: string) => {
+    updateReport(chapterId, subChapterId, module.id, {
+      content: report.content ? report.content + '\n\n' + content : content,
+    })
+  }
+
   const handleExpand = async () => {
     if (!viewpoint.trim()) return
-    const apiKey = aiSettings.apiKeys[aiSettings.providerId]
-    if (!apiKey) { setError('请先在 AI 设置中填入 API Key'); return }
     setError('')
-    setLoading(true)
+    setLoading('expand')
     try {
-      const provider = PROVIDER_CONFIGS.find(p => p.id === aiSettings.providerId)
-      const userPrompt = buildUserPrompt(
-        viewpoint,
-        (draft.sources ?? []).map(s => s.note).filter(Boolean).join('\n'),
-        (draft.sources ?? []).map(s => s.url).filter(Boolean).join('\n'),
-        report.content
-      )
-
-      let content = ''
-      if (aiSettings.providerId === 'anthropic') {
-        content = await callAnthropic(apiKey, aiSettings.modelId, userPrompt)
-      } else {
-        content = await callOpenAICompat(apiKey, aiSettings.modelId, provider?.baseUrl, userPrompt)
-      }
-
-      if (content) {
-        updateReport(chapterId, subChapterId, module.id, {
-          content: report.content ? report.content + '\n\n' + content : content,
-        })
-        setViewpoint('')
-      }
+      const userPrompt = buildUserPrompt(viewpoint, draftNotes, draftUrls, report.content)
+      const content = await callAI(userPrompt)
+      if (content) { append(content); setViewpoint('') }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'AI 生成失败'
-      setError(msg)
+      setError(err instanceof Error ? err.message : 'AI 生成失败')
     } finally {
-      setLoading(false)
+      setLoading(null)
+    }
+  }
+
+  const handleGenerate = async () => {
+    if (!hasDraftContent) { setError('请先在左侧底稿中填写来源信息'); return }
+    setError('')
+    setLoading('generate')
+    try {
+      const parts: string[] = []
+      if (draftUrls) parts.push(`参考资料链接：\n${draftUrls}`)
+      if (draftNotes) parts.push(`底稿备注：\n${draftNotes}`)
+      if (report.content) parts.push(`已有内容：\n${report.content}`)
+      const extra = instruction.trim()
+      const context = parts.join('\n\n')
+      const userPrompt = extra
+        ? `${context}\n\n请基于以上材料，${extra}，撰写研究报告内容。`
+        : `${context}\n\n请基于以上材料，撰写一段专业的研究报告内容。`
+      const content = await callAI(userPrompt)
+      if (content) { append(content); setInstruction('') }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'AI 生成失败')
+    } finally {
+      setLoading(null)
     }
   }
 
@@ -191,7 +215,10 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
         rows={5}
         className="w-full bg-gray-900 text-gray-200 text-sm rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-500 resize-none leading-relaxed"
       />
+
       {error && <p className="text-red-400 text-xs">{error}</p>}
+
+      {/* AI 续写 */}
       <div className="flex gap-2">
         <input
           type="text"
@@ -203,10 +230,30 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
         />
         <button
           onClick={handleExpand}
-          disabled={loading || !viewpoint.trim()}
+          disabled={loading !== null || !viewpoint.trim()}
           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap"
         >
-          {loading ? '生成中...' : 'AI 续写'}
+          {loading === 'expand' ? '生成中...' : 'AI 续写'}
+        </button>
+      </div>
+
+      {/* 从底稿生成 */}
+      <div className="flex gap-2 border-t border-gray-700 pt-2">
+        <input
+          type="text"
+          placeholder="额外指令（可选，如：重点分析竞争格局）"
+          value={instruction}
+          onChange={e => setInstruction(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleGenerate() }}
+          className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none placeholder-gray-500"
+        />
+        <button
+          onClick={handleGenerate}
+          disabled={loading !== null || !hasDraftContent}
+          title={!hasDraftContent ? '请先填写底稿来源信息' : ''}
+          className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap"
+        >
+          {loading === 'generate' ? '生成中...' : '从底稿生成'}
         </button>
       </div>
     </div>
