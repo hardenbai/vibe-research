@@ -6,6 +6,7 @@ import { captureScreenshot } from '@/lib/screenCapture'
 import { setActiveCaptureHandler } from '@/lib/activeCapture'
 import { fileToCompressedDataUrl, compressDataUrl } from '@/lib/imageUtils'
 import type { Module, DraftSource } from '@/lib/types'
+import FocusOverlay from './FocusOverlay'
 
 const inp = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: '100%', background: 'var(--input-bg)', color: 'var(--t2)',
@@ -25,8 +26,10 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
 }) {
   const { updateDraftSource, removeDraftSource } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const [pasting, setPasting] = useState(false)
   const [capturing, setCapturing] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   const update = useCallback((d: Partial<DraftSource>) =>
     updateDraftSource(chapterId, subChapterId, module.id, source.id, d),
@@ -64,8 +67,14 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
     return () => document.removeEventListener('paste', handler)
   }, [isActive, handleImage, source.url, update])
 
-  return (
-    <div onClick={onActivate}
+  const enterFocus = () => {
+    onActivate()
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (rect) setFocused(true)
+  }
+
+  const cardContent = (
+    <div ref={cardRef} onClick={enterFocus}
       style={{
         display: 'flex', flexDirection: 'column', gap: 8,
         padding: '12px', borderRadius: 10, cursor: 'pointer',
@@ -134,7 +143,7 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
       )}
 
       {/* Capture */}
-      <button onClick={async () => { setActiveCaptureHandler(applyCapture); setCapturing(true); const r = await captureScreenshot(); setCapturing(false); if (r) applyCapture(r.imageBase64, r.url) }}
+      <button onClick={async (e) => { e.stopPropagation(); setActiveCaptureHandler(applyCapture); setCapturing(true); const r = await captureScreenshot(); setCapturing(false); if (r) applyCapture(r.imageBase64, r.url) }}
         disabled={capturing}
         style={{ padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'var(--input-bg)', color: 'var(--t3)', border: '1px solid var(--input-border)', cursor: 'pointer', transition: 'all 0.15s', opacity: capturing ? 0.5 : 1 }}
         onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--accent-hover)'; el.style.borderColor = 'var(--accent-border)' }}
@@ -146,6 +155,72 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
         style={inp({ resize: 'none', lineHeight: 1.55 })}
         onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
     </div>
+  )
+
+  return (
+    <>
+      {cardContent}
+
+      <FocusOverlay
+        isOpen={focused}
+        onClose={() => setFocused(false)}
+        originRect={cardRef.current?.getBoundingClientRect() ?? null}
+        title={`来源 ${index + 1}`}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* URL */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>链接 URL</label>
+            <input type="url" placeholder="粘贴参考链接..." value={source.url ?? ''} onChange={e => update({ url: e.target.value })}
+              style={inp({ fontSize: 14, padding: '10px 14px' })}
+              onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
+          </div>
+
+          {/* Image */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>截图</label>
+            {source.imageBase64 ? (
+              <div style={{ position: 'relative' }} className="group/img">
+                <img src={source.imageBase64} alt="截图" style={{ width: '100%', borderRadius: 10, objectFit: 'contain', maxHeight: 360, border: '1px solid var(--input-border)', display: 'block' }} />
+                <button onClick={() => update({ imageBase64: undefined })}
+                  className="opacity-0 group-hover/img:opacity-100 transition-opacity"
+                  style={{ position: 'absolute', top: 10, right: 10, background: 'var(--red)', color: 'white', fontSize: 12, padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>删除</button>
+              </div>
+            ) : (
+              <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) handleImage(f) }}
+                onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
+                style={{ border: '1.5px dashed var(--input-border)', borderRadius: 10, padding: '32px 0', textAlign: 'center', fontSize: 14, color: 'var(--t4)', cursor: 'pointer', transition: 'all 0.15s' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'var(--accent-border)'; el.style.color = 'var(--t3)'; el.style.background = 'var(--ws-bg)' }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'var(--input-border)'; el.style.color = 'var(--t4)'; el.style.background = 'transparent' }}
+              >
+                点击、拖拽或 <kbd style={{ background: 'var(--ws-bg)', borderRadius: 4, padding: '2px 8px', fontFamily: 'var(--mono)', fontSize: 12 }}>⌘V</kbd> 粘贴截图
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }} />
+              </div>
+            )}
+          </div>
+
+          {/* Capture */}
+          <button onClick={async () => { setActiveCaptureHandler(applyCapture); setCapturing(true); const r = await captureScreenshot(); setCapturing(false); if (r) applyCapture(r.imageBase64, r.url) }}
+            disabled={capturing}
+            style={{ padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 500, background: 'var(--input-bg)', color: 'var(--t3)', border: '1px solid var(--input-border)', cursor: 'pointer', transition: 'all 0.15s', opacity: capturing ? 0.5 : 1 }}
+            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--accent-hover)'; el.style.borderColor = 'var(--accent-border)' }}
+            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--input-bg)'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--input-border)' }}
+          >{capturing ? '选择捕获区域...' : '📷  捕获屏幕'}</button>
+
+          {/* Note */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>备注</label>
+            <textarea placeholder="输入备注信息..." value={source.note ?? ''} rows={5} onChange={e => update({ note: e.target.value })}
+              style={inp({ resize: 'vertical', lineHeight: 1.6, fontSize: 14, padding: '10px 14px' })}
+              onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--mono)', margin: 0 }}>
+            <kbd style={{ background: 'var(--ws-bg)', borderRadius: 3, padding: '0 5px' }}>⌘V</kbd> 粘贴图片 · <kbd style={{ background: 'var(--ws-bg)', borderRadius: 3, padding: '0 5px' }}>⌘⇧S</kbd> 全屏截图
+          </p>
+        </div>
+      </FocusOverlay>
+    </>
   )
 }
 

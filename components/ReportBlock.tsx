@@ -6,6 +6,7 @@ import type { Module, DraftSource } from '@/lib/types'
 import { PROVIDER_CONFIGS } from '@/lib/providers'
 import { fileToCompressedDataUrl } from '@/lib/imageUtils'
 import { streamAI } from '@/lib/ai'
+import FocusOverlay from './FocusOverlay'
 
 const inp = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: '100%', background: 'var(--input-bg)', color: 'var(--t2)',
@@ -64,6 +65,8 @@ function Badge({ label, color }: { label: string; color: 'blue' | 'purple' }) {
 function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; subChapterId: string | null; module: Module }) {
   const { updateReport, setActiveModule, activeModuleId } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [focused, setFocused] = useState(false)
   const { report } = module
   const isActive = activeModuleId === module.id
 
@@ -71,8 +74,14 @@ function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; s
     updateReport(chapterId, subChapterId, module.id, { chartImage: await fileToCompressedDataUrl(file) })
   }
 
-  return (
-    <div onClick={() => setActiveModule(module.id)}
+  const enterFocus = () => {
+    setActiveModule(module.id)
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (rect) setFocused(true)
+  }
+
+  const cardContent = (
+    <div ref={cardRef} onClick={enterFocus}
       style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         padding: 12, borderRadius: 12, minHeight: 120, cursor: 'pointer',
@@ -96,13 +105,13 @@ function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; s
       {report.chartImage ? (
         <div style={{ position: 'relative' }} className="group/c">
           <img src={report.chartImage} alt="图表" style={{ width: '100%', borderRadius: 8, objectFit: 'contain', maxHeight: 240, border: '1px solid var(--input-border)', display: 'block' }} />
-          <button onClick={() => updateReport(chapterId, subChapterId, module.id, { chartImage: undefined })}
+          <button onClick={e => { e.stopPropagation(); updateReport(chapterId, subChapterId, module.id, { chartImage: undefined }) }}
             className="opacity-0 group-hover/c:opacity-100 transition-opacity"
             style={{ position: 'absolute', top: 8, right: 8, background: 'var(--red)', color: 'white', fontSize: 11, padding: '2px 8px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>删除</button>
         </div>
       ) : (
         <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) handleImage(f) }}
-          onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
+          onDragOver={e => e.preventDefault()} onClick={e => { e.stopPropagation(); fileRef.current?.click() }}
           style={{ border: '1.5px dashed rgba(191,90,242,0.25)', borderRadius: 8, padding: '24px 0', textAlign: 'center', fontSize: 12, color: 'var(--t4)', cursor: 'pointer', transition: 'all 0.15s' }}
           onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(191,90,242,0.5)'; el.style.color = '#bf5af2'; el.style.background = 'rgba(191,90,242,0.04)' }}
           onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(191,90,242,0.25)'; el.style.color = 'var(--t4)'; el.style.background = 'transparent' }}
@@ -118,6 +127,59 @@ function ChartModule({ chapterId, subChapterId, module }: { chapterId: string; s
         onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
     </div>
   )
+
+  return (
+    <>
+      {cardContent}
+
+      <FocusOverlay
+        isOpen={focused}
+        onClose={() => setFocused(false)}
+        originRect={cardRef.current?.getBoundingClientRect() ?? null}
+        title="图表"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>图表标题</label>
+            <input type="text" placeholder="如：图1. XX 走势图" value={report.chartTitle ?? ''}
+              onChange={e => updateReport(chapterId, subChapterId, module.id, { chartTitle: e.target.value })}
+              style={inp({ fontSize: 16, fontWeight: 600, padding: '10px 14px' })}
+              onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>图表图片</label>
+            {report.chartImage ? (
+              <div style={{ position: 'relative' }} className="group/c">
+                <img src={report.chartImage} alt="图表" style={{ width: '100%', borderRadius: 10, objectFit: 'contain', maxHeight: 400, border: '1px solid var(--input-border)', display: 'block' }} />
+                <button onClick={() => updateReport(chapterId, subChapterId, module.id, { chartImage: undefined })}
+                  className="opacity-0 group-hover/c:opacity-100 transition-opacity"
+                  style={{ position: 'absolute', top: 10, right: 10, background: 'var(--red)', color: 'white', fontSize: 12, padding: '4px 12px', borderRadius: 20, border: 'none', cursor: 'pointer' }}>删除</button>
+              </div>
+            ) : (
+              <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) handleImage(f) }}
+                onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
+                style={{ border: '1.5px dashed rgba(191,90,242,0.3)', borderRadius: 10, padding: '36px 0', textAlign: 'center', fontSize: 14, color: 'var(--t4)', cursor: 'pointer', transition: 'all 0.15s' }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(191,90,242,0.5)'; el.style.color = '#bf5af2'; el.style.background = 'rgba(191,90,242,0.04)' }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = 'rgba(191,90,242,0.3)'; el.style.color = 'var(--t4)'; el.style.background = 'transparent' }}
+              >
+                点击或拖拽上传图表
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }} />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 6 }}>资料来源</label>
+            <input type="text" placeholder="如：Wind，公司公告" value={report.chartSource ?? ''}
+              onChange={e => updateReport(chapterId, subChapterId, module.id, { chartSource: e.target.value })}
+              style={inp({ fontSize: 14, padding: '10px 14px' })}
+              onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
+          </div>
+        </div>
+      </FocusOverlay>
+    </>
+  )
 }
 
 function TextModule({ chapterId, subChapterId, module }: { chapterId: string; subChapterId: string | null; module: Module }) {
@@ -127,6 +189,8 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
   const [loading, setLoading] = useState<'expand' | 'generate' | null>(null)
   const [error, setError] = useState('')
   const abort = useRef<AbortController | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [focused, setFocused] = useState(false)
   const { report, draft } = module
   const isActive = activeModuleId === module.id
   const hasSources = (draft.sources ?? []).some(s => s.url || s.note || s.imageBase64)
@@ -160,8 +224,14 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
     whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.15s',
   }
 
-  return (
-    <div onClick={() => setActiveModule(module.id)}
+  const enterFocus = () => {
+    setActiveModule(module.id)
+    const rect = cardRef.current?.getBoundingClientRect()
+    if (rect) setFocused(true)
+  }
+
+  const cardContent = (
+    <div ref={cardRef} onClick={enterFocus}
       style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         padding: 12, borderRadius: 12, minHeight: 120, cursor: 'text',
@@ -192,10 +262,10 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
           onKeyDown={e => { if (e.key === 'Enter') run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content)) }}
           style={inp()} onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
         {loading === 'expand' ? (
-          <button onClick={() => abort.current?.abort()}
+          <button onClick={e => { e.stopPropagation(); abort.current?.abort() }}
             style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
         ) : (
-          <button onClick={() => run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content))}
+          <button onClick={e => { e.stopPropagation(); run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content)) }}
             disabled={loading !== null || !viewpoint.trim()}
             style={{ ...btnBase, background: 'var(--accent)', color: 'white', opacity: (loading !== null || !viewpoint.trim()) ? 0.45 : 1 }}
             onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'var(--accent-hover)' }}
@@ -212,10 +282,10 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
             onKeyDown={e => { if (e.key === 'Enter') run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content)) }}
             style={inp()} onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)} />
           {loading === 'generate' ? (
-            <button onClick={() => abort.current?.abort()}
+            <button onClick={e => { e.stopPropagation(); abort.current?.abort() }}
               style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
           ) : (
-            <button onClick={() => run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content))}
+            <button onClick={e => { e.stopPropagation(); run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content)) }}
               disabled={loading !== null}
               style={{ ...btnBase, background: 'var(--green-light)', border: '1px solid var(--green-border)', color: 'var(--green)', opacity: loading !== null ? 0.45 : 1 }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'rgba(40,205,65,0.2)' }}
@@ -225,6 +295,84 @@ function TextModule({ chapterId, subChapterId, module }: { chapterId: string; su
         </div>
       )}
     </div>
+  )
+
+  return (
+    <>
+      {cardContent}
+
+      <FocusOverlay
+        isOpen={focused}
+        onClose={() => setFocused(false)}
+        originRect={cardRef.current?.getBoundingClientRect() ?? null}
+        title="报告"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <textarea
+            placeholder="在此撰写报告内容..."
+            value={report.content}
+            onChange={e => updateReport(chapterId, subChapterId, module.id, { content: e.target.value })}
+            rows={14}
+            style={inp({ resize: 'vertical', lineHeight: 1.75, fontSize: 15, padding: '14px 16px', color: 'var(--t1)' })}
+            onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)}
+          />
+
+          {error && <p style={{ fontSize: 13, color: 'var(--red)', margin: 0 }}>{error}</p>}
+
+          {/* AI 续写 */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              placeholder="输入一句观点，AI 帮你续写..."
+              value={viewpoint}
+              onChange={e => setViewpoint(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content)) }}
+              style={inp({ fontSize: 14, padding: '10px 14px' })}
+              onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)}
+            />
+            {loading === 'expand' ? (
+              <button onClick={() => abort.current?.abort()}
+                style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
+            ) : (
+              <button
+                onClick={() => run('expand', EXPAND_PROMPT, buildExpand(viewpoint, draft.sources ?? [], report.content))}
+                disabled={loading !== null || !viewpoint.trim()}
+                style={{ ...btnBase, background: 'var(--accent)', color: 'white', opacity: (loading !== null || !viewpoint.trim()) ? 0.45 : 1 }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'var(--accent-hover)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
+              >AI 续写</button>
+            )}
+          </div>
+
+          {/* 从底稿生成 */}
+          {hasSources && (
+            <div style={{ display: 'flex', gap: 8, paddingTop: 8, borderTop: '1px solid var(--divider)' }}>
+              <input
+                type="text"
+                placeholder="额外指令（可选）"
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content)) }}
+                style={inp({ fontSize: 14, padding: '10px 14px' })}
+                onFocus={e => focus(e.target as HTMLElement, true)} onBlur={e => focus(e.target as HTMLElement, false)}
+              />
+              {loading === 'generate' ? (
+                <button onClick={() => abort.current?.abort()}
+                  style={{ ...btnBase, background: 'var(--red-light)', border: '1px solid var(--red-border)', color: 'var(--red)' }}>停止</button>
+              ) : (
+                <button
+                  onClick={() => run('generate', DRAFT_PROMPT, instruction.trim() ? `${buildDraft(draft.sources ?? [], report.content)}\n\n额外要求：${instruction.trim()}` : buildDraft(draft.sources ?? [], report.content))}
+                  disabled={loading !== null}
+                  style={{ ...btnBase, background: 'var(--green-light)', border: '1px solid var(--green-border)', color: 'var(--green)', opacity: loading !== null ? 0.45 : 1 }}
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; if (!el.disabled) el.style.background = 'rgba(40,205,65,0.2)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--green-light)' }}
+                >从底稿生成</button>
+              )}
+            </div>
+          )}
+        </div>
+      </FocusOverlay>
+    </>
   )
 }
 

@@ -105,6 +105,14 @@ function modulesToMd(modules: Module[]) {
   return lines
 }
 
+function countChars(modules: Module[]): number {
+  let n = 0
+  for (const m of modules) {
+    if (m.type === 'text' && m.report.content) n += m.report.content.length
+  }
+  return n
+}
+
 export default function ChapterEditor() {
   const { chapters, activeChapterId, activeSubChapterId, renameChapter, renameSubChapter, addSubChapter, deleteSubChapter } = useStore()
   const chapter = chapters.find(c => c.id === activeChapterId)
@@ -136,6 +144,8 @@ export default function ChapterEditor() {
 
   const activeSub = activeSubChapterId ? chapter.subChapters.find(s => s.id === activeSubChapterId) : null
   const totalModules = chapter.modules.length + chapter.subChapters.reduce((n, s) => n + s.modules.length, 0)
+  const allModules = [chapter.modules, ...chapter.subChapters.map(s => s.modules)]
+  const totalChars = allModules.reduce((n, ms) => n + countChars(ms), 0)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--ws-bg)' }}>
@@ -147,64 +157,50 @@ export default function ChapterEditor() {
         gap: 0,
       }}>
         {/* Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--t4)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, minWidth: 0 }}>
+          <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--t4)', flexShrink: 0 }}>
             <path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--t2)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {chapter.title}
           </span>
           {activeSub && (
             <>
-              <span style={{ color: 'var(--t4)', fontSize: 15, lineHeight: 1, marginTop: -1 }}>›</span>
-              <span style={{ fontSize: 12.5, color: 'var(--t3)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <svg width="11" height="11" viewBox="0 0 10 10" fill="none" style={{ color: 'var(--t4)', flexShrink: 0, margin: '0 1px' }}>
+                <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span style={{ fontSize: 13, color: 'var(--t3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {activeSub.title}
               </span>
             </>
           )}
         </div>
 
-        {/* Divider */}
-        <div style={{ width: 1, height: 16, background: 'var(--divider)', margin: '0 16px', flexShrink: 0 }} />
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
 
-        {/* Column labels — offset 30px to align with content grid (gutter 20px + gap 10px) */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 30 }}>
-          {[
-            { label: '底稿', hint: '来源 · 截图 · 备注' },
-            { label: '报告', hint: 'AI 续写 · 图表' },
-          ].map(({ label, hint }) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
-              <span style={{ fontSize: 11, color: 'var(--t4)' }}>{hint}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Right actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {/* Module count */}
-          <span style={{
-            fontSize: 11.5, color: 'var(--t4)',
-            background: 'var(--ws-bg)', border: '1px solid var(--divider)',
-            padding: '3px 9px', borderRadius: 20,
-          }}>
-            {totalModules} 个模块
+        {/* Stats + Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
+          <span style={{ fontSize: 13, color: 'var(--t3)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--t2)' }}>{totalModules}</span> 模块
           </span>
-          {/* Export */}
+          <span style={{ fontSize: 13, color: 'var(--t3)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--t2)' }}>{totalChars.toLocaleString()}</span> 字
+          </span>
           <button onClick={exportMd}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500,
-              background: 'transparent', color: 'var(--t3)',
-              border: '1px solid var(--divider)', cursor: 'pointer', transition: 'all 0.15s',
+              padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: 'var(--accent)', color: '#fff',
+              border: 'none', cursor: 'pointer', transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--t1)'; el.style.borderColor = 'rgba(0,0,0,0.18)' }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--divider)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
           >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
               <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            导出 MD
+            导出
           </button>
         </div>
       </div>
