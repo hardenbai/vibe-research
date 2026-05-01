@@ -57,15 +57,29 @@ function buildDraftPrompt(sources: DraftSource[], existingContent?: string) {
   return context ? `${context}\n\n请根据以上底稿材料，撰写一段专业、完整的研究报告内容。` : `请撰写一段专业的研究报告内容。`
 }
 
-
-function ActiveBadge({ color }: { color: 'blue' | 'purple' }) {
-  const cls = color === 'purple'
-    ? 'bg-purple-600/20 text-purple-300 border-purple-500/20'
-    : 'bg-blue-600/20 text-blue-300 border-blue-500/20'
-  const dot = color === 'purple' ? 'bg-purple-400' : 'bg-blue-400'
+function ActiveBadge({ color }: { color: 'gold' | 'purple' }) {
+  const isGold = color === 'gold'
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border ${cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${dot}`} />当前
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] ml-1.5"
+      style={isGold ? {
+        background: 'rgba(200,168,75,0.12)',
+        border: '1px solid rgba(200,168,75,0.3)',
+        color: '#e8c96e',
+      } : {
+        background: 'rgba(168,85,247,0.1)',
+        border: '1px solid rgba(168,85,247,0.25)',
+        color: '#c084fc',
+      }}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{
+          background: isGold ? 'var(--gold)' : '#a855f7',
+          animation: 'goldPulse 1.5s ease-in-out infinite',
+        }}
+      />
+      当前
     </span>
   )
 }
@@ -75,38 +89,112 @@ function ChartModule({ chapterId, subChapterId, module }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const { report } = module
   const isActive = activeModuleId === module.id
+
   const handleImage = async (file: File) => {
     const compressed = await fileToCompressedDataUrl(file)
     updateReport(chapterId, subChapterId, module.id, { chartImage: compressed })
   }
+
+  const cardStyle = {
+    background: 'var(--bg-card)',
+    border: `1px solid ${isActive ? 'rgba(168,85,247,0.3)' : 'var(--border-subtle)'}`,
+    boxShadow: isActive ? '0 0 12px rgba(168,85,247,0.08)' : 'none',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 120,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  }
+
+  const inputStyle = {
+    width: '100%',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 6,
+    fontSize: 12,
+    padding: '6px 8px',
+    fontFamily: 'var(--font-sans)',
+    outline: 'none',
+  }
+
   return (
-    <div onClick={() => setActiveModule(module.id)}
-      className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-purple-900/50 min-h-[120px] cursor-pointer">
+    <div onClick={() => setActiveModule(module.id)} style={cardStyle}>
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-purple-400' : 'text-gray-500'}`}>
+        <span
+          className="text-[9px] font-mono tracking-widest uppercase"
+          style={{ color: isActive ? '#c084fc' : 'var(--text-muted)' }}
+        >
           图表
-          {isActive && <span className="ml-1.5"><ActiveBadge color="purple" /></span>}
+          {isActive && <ActiveBadge color="purple" />}
         </span>
       </div>
-      <input type="text" placeholder="图表标题（如：图1. XX走势图）" value={report.chartTitle ?? ''}
+
+      <input
+        type="text"
+        placeholder="图表标题（如：图1. XX走势图）"
+        value={report.chartTitle ?? ''}
         onChange={e => updateReport(chapterId, subChapterId, module.id, { chartTitle: e.target.value })}
-        className="w-full bg-gray-900 text-gray-200 text-sm font-medium rounded px-2 py-1.5 border border-gray-600 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
+        style={inputStyle}
+        className="font-medium"
+        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(168,85,247,0.5)' }}
+        onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
+      />
+
       {report.chartImage ? (
         <div className="relative group/chart">
-          <img src={report.chartImage} alt="图表" className="w-full rounded border border-gray-600 object-contain max-h-64" />
-          <button onClick={() => updateReport(chapterId, subChapterId, module.id, { chartImage: undefined })}
-            className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover/chart:opacity-100 transition-opacity">删除</button>
+          <img
+            src={report.chartImage}
+            alt="图表"
+            className="w-full rounded object-contain max-h-64"
+            style={{ border: '1px solid var(--border-default)' }}
+          />
+          <button
+            onClick={() => updateReport(chapterId, subChapterId, module.id, { chartImage: undefined })}
+            className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover/chart:opacity-100 transition-opacity"
+            style={{ background: 'rgba(248,113,113,0.9)', color: 'white' }}
+          >删除</button>
         </div>
       ) : (
-        <div onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) handleImage(f) }} onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed border-purple-800 rounded p-6 text-center text-gray-500 text-xs cursor-pointer hover:border-purple-500 hover:text-purple-400 transition-colors">
+        <div
+          onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type.startsWith('image/')) handleImage(f) }}
+          onDragOver={e => e.preventDefault()}
+          onClick={() => fileRef.current?.click()}
+          className="rounded p-6 text-center text-[10px] transition-all duration-150 cursor-pointer"
+          style={{
+            border: '1px dashed rgba(168,85,247,0.3)',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLDivElement
+            el.style.borderColor = 'rgba(168,85,247,0.6)'
+            el.style.color = '#c084fc'
+            el.style.background = 'rgba(168,85,247,0.04)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLDivElement
+            el.style.borderColor = 'rgba(168,85,247,0.3)'
+            el.style.color = 'var(--text-muted)'
+            el.style.background = 'transparent'
+          }}
+        >
           点击或拖拽上传图表
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }} />
         </div>
       )}
-      <input type="text" placeholder="资料来源（如：Wind，公司公告）" value={report.chartSource ?? ''}
+
+      <input
+        type="text"
+        placeholder="资料来源（如：Wind，公司公告）"
+        value={report.chartSource ?? ''}
         onChange={e => updateReport(chapterId, subChapterId, module.id, { chartSource: e.target.value })}
-        className="w-full bg-gray-900 text-gray-300 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
+        style={{ ...inputStyle, fontSize: 11, color: 'var(--text-secondary)' }}
+        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'rgba(168,85,247,0.5)' }}
+        onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
+      />
     </div>
   )
 }
@@ -122,7 +210,6 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
   const isActive = activeModuleId === module.id
   const hasSources = (draft.sources ?? []).some(s => s.url || s.note || s.imageBase64)
 
-  // Abort any in-flight stream when this module unmounts
   useEffect(() => {
     return () => abortRef.current?.abort()
   }, [])
@@ -135,7 +222,6 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
     abortRef.current = ac
     setError(''); setLoading(mode)
 
-    // Anchor: insert separator + buffer where streamed chunks will be appended
     const separator = report.content ? '\n\n' : ''
     const anchor = report.content + separator
     let acc = ''
@@ -158,7 +244,7 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
       if (mode === 'expand') setViewpoint('')
       else setInstruction('')
     } catch (err: unknown) {
-      if ((err as Error)?.name === 'AbortError') return // user-cancelled, keep partial
+      if ((err as Error)?.name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'AI 生成失败')
     } finally {
       if (abortRef.current === ac) abortRef.current = null
@@ -168,8 +254,7 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
 
   const handleExpand = () => {
     if (!viewpoint.trim()) return
-    runStream('expand', EXPAND_PROMPT,
-      buildExpandPrompt(viewpoint, draft.sources ?? [], report.content))
+    runStream('expand', EXPAND_PROMPT, buildExpandPrompt(viewpoint, draft.sources ?? [], report.content))
   }
 
   const handleGenerate = () => {
@@ -182,59 +267,154 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
 
   const handleStop = () => abortRef.current?.abort()
 
-  const handleActivate = () => setActiveModule(module.id)
+  const cardStyle = {
+    background: 'var(--bg-card)',
+    border: `1px solid ${isActive ? 'var(--border-gold)' : 'var(--border-subtle)'}`,
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 120,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 8,
+    cursor: 'text',
+    transition: 'all 0.15s',
+  }
+
+  const inputStyle = {
+    width: '100%',
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 6,
+    fontSize: 11,
+    padding: '5px 8px',
+    fontFamily: 'var(--font-sans)',
+    outline: 'none',
+    transition: 'border-color 0.15s',
+  }
 
   return (
-    <div onClick={handleActivate}
-      className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-gray-700 min-h-[120px] cursor-text">
+    <div onClick={() => setActiveModule(module.id)} style={cardStyle}>
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-blue-400' : 'text-gray-500'}`}>
+        <span
+          className="text-[9px] font-mono tracking-widest uppercase"
+          style={{ color: isActive ? 'var(--gold)' : 'var(--text-muted)' }}
+        >
           报告
-          {isActive && <span className="ml-1.5"><ActiveBadge color="blue" /></span>}
+          {isActive && <ActiveBadge color="gold" />}
         </span>
       </div>
-      <textarea placeholder="在此撰写报告内容..." value={report.content}
+
+      {/* Textarea */}
+      <textarea
+        placeholder="在此撰写报告内容..."
+        value={report.content}
         onChange={e => updateReport(chapterId, subChapterId, module.id, { content: e.target.value })}
         rows={5}
-        className="w-full bg-gray-900 text-gray-200 text-sm rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none placeholder-gray-500 resize-none leading-relaxed transition-all" />
+        style={{
+          width: '100%',
+          background: 'var(--bg-surface)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 6,
+          fontSize: 13,
+          padding: '8px 10px',
+          fontFamily: 'var(--font-sans)',
+          lineHeight: 1.7,
+          outline: 'none',
+          resize: 'none',
+          transition: 'border-color 0.15s',
+        }}
+        onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--gold-dim)' }}
+        onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--border-default)' }}
+      />
 
-      {error && <p className="text-red-400 text-xs">{error}</p>}
+      {error && (
+        <p className="text-[11px]" style={{ color: '#f87171' }}>{error}</p>
+      )}
 
       {/* AI 续写 */}
       <div className="flex gap-2">
-        <input type="text" placeholder="输入一句观点，AI 帮你续写..." value={viewpoint}
-          onChange={e => setViewpoint(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleExpand() }}
-          className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-500" />
+        <input
+          type="text"
+          placeholder="输入一句观点，AI 帮你续写..."
+          value={viewpoint}
+          onChange={e => setViewpoint(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleExpand() }}
+          style={inputStyle}
+          onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+          onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
+        />
         {loading === 'expand' ? (
-          <button onClick={handleStop}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors whitespace-nowrap">
-            停止
-          </button>
+          <button
+            onClick={handleStop}
+            className="px-3 py-1.5 rounded text-[11px] whitespace-nowrap transition-all"
+            style={{
+              background: 'rgba(248,113,113,0.15)',
+              border: '1px solid rgba(248,113,113,0.4)',
+              color: '#f87171',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >停止</button>
         ) : (
-          <button onClick={handleExpand} disabled={loading !== null || !viewpoint.trim()}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
-            AI 续写
-          </button>
+          <button
+            onClick={handleExpand}
+            disabled={loading !== null || !viewpoint.trim()}
+            className="px-3 py-1.5 rounded text-[11px] whitespace-nowrap transition-all disabled:opacity-40"
+            style={{
+              background: 'var(--gold-glow)',
+              border: '1px solid var(--border-gold)',
+              color: 'var(--gold)',
+              fontFamily: 'var(--font-sans)',
+            }}
+            onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(200,168,75,0.2)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--gold-glow)' }}
+          >AI 续写</button>
         )}
       </div>
 
       {/* 从底稿生成 */}
       {hasSources && (
-        <div className="flex gap-2 border-t border-gray-700 pt-2">
-          <input type="text" placeholder="额外指令（可选，如：重点分析竞争格局）"
-            value={instruction} onChange={e => setInstruction(e.target.value)}
+        <div
+          className="flex gap-2 pt-2"
+          style={{ borderTop: '1px solid var(--border-subtle)' }}
+        >
+          <input
+            type="text"
+            placeholder="额外指令（可选，如：重点分析竞争格局）"
+            value={instruction}
+            onChange={e => setInstruction(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleGenerate() }}
-            className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none placeholder-gray-500" />
+            style={{ ...inputStyle, borderColor: 'var(--border-subtle)' }}
+            onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--teal-dim)' }}
+            onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-subtle)' }}
+          />
           {loading === 'generate' ? (
-            <button onClick={handleStop}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors whitespace-nowrap">
-              停止
-            </button>
+            <button
+              onClick={handleStop}
+              className="px-3 py-1.5 rounded text-[11px] whitespace-nowrap transition-all"
+              style={{
+                background: 'rgba(248,113,113,0.15)',
+                border: '1px solid rgba(248,113,113,0.4)',
+                color: '#f87171',
+                fontFamily: 'var(--font-sans)',
+              }}
+            >停止</button>
           ) : (
-            <button onClick={handleGenerate} disabled={loading !== null}
-              className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
-              从底稿生成
-            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={loading !== null}
+              className="px-3 py-1.5 rounded text-[11px] whitespace-nowrap transition-all disabled:opacity-40"
+              style={{
+                background: 'rgba(45,212,191,0.08)',
+                border: '1px solid rgba(45,212,191,0.3)',
+                color: 'var(--teal)',
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={e => { if (!(e.currentTarget as HTMLButtonElement).disabled) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(45,212,191,0.15)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(45,212,191,0.08)' }}
+            >从底稿生成</button>
           )}
         </div>
       )}

@@ -36,7 +36,8 @@ function InlineEdit({
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
         onClick={e => e.stopPropagation()}
-        className={`bg-transparent outline-none border-b border-blue-400 ${className}`}
+        style={{ background: 'transparent', outline: 'none', borderBottom: '1px solid var(--gold-dim)' }}
+        className={`w-full text-[--text-primary] ${className}`}
       />
     )
   }
@@ -54,20 +55,27 @@ function SubChapterItem({
 
   return (
     <div
-      className={`group flex items-center gap-1 pl-7 pr-2 py-1.5 rounded-lg cursor-pointer text-xs transition-colors ${
-        isActive ? 'bg-blue-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-gray-200'
-      }`}
+      className="group flex items-center gap-1.5 pl-6 pr-2 py-1.5 rounded cursor-pointer transition-all duration-150"
+      style={isActive ? {
+        background: 'var(--gold-glow)',
+        borderLeft: '2px solid var(--gold)',
+        paddingLeft: '22px',
+      } : {
+        borderLeft: '2px solid transparent',
+      }}
       onClick={() => setActiveSubChapter(chapterId, sub.id)}
     >
-      <span className="text-gray-600 mr-0.5">└</span>
+      <svg width="8" height="8" viewBox="0 0 8 8" className="shrink-0 opacity-30">
+        <path d="M1 1 v4 h6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      </svg>
       <InlineEdit
         value={sub.title}
         onCommit={v => renameSubChapter(chapterId, sub.id, v)}
-        className="flex-1 text-xs"
+        className={`flex-1 text-xs leading-relaxed ${isActive ? 'text-[--gold-bright]' : 'text-[--text-secondary] group-hover:text-[--text-primary]'}`}
       />
       <button
         onClick={e => { e.stopPropagation(); if (confirm(`删除「${sub.title}」？`)) deleteSubChapter(chapterId, sub.id) }}
-        className="opacity-0 group-hover:opacity-100 hover:text-red-400 px-0.5 shrink-0"
+        className="opacity-0 group-hover:opacity-100 text-[--text-muted] hover:text-red-400 text-[10px] px-0.5 transition-all shrink-0"
       >✕</button>
     </div>
   )
@@ -84,20 +92,26 @@ function ChapterItem({ chapter }: { chapter: Chapter }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: chapter.id })
 
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style}>
-      {/* Chapter row */}
+    <div ref={setNodeRef} style={style} className="animate-fade-in-up">
       <div
-        className={`group flex items-center gap-1 px-2 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
-          isActive ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
-        }`}
+        className="group flex items-center gap-1.5 px-2 py-2 rounded-md cursor-pointer transition-all duration-150"
+        style={isActive ? {
+          background: 'linear-gradient(90deg, rgba(200,168,75,0.1) 0%, rgba(200,168,75,0.04) 100%)',
+          borderLeft: '2px solid var(--gold)',
+          paddingLeft: '6px',
+        } : {
+          borderLeft: '2px solid transparent',
+        }}
         onClick={() => setActiveChapter(chapter.id)}
       >
+        {/* Drag handle */}
         <span
           {...attributes} {...listeners}
-          className="cursor-grab text-gray-600 hover:text-gray-400 shrink-0 mr-0.5"
+          className="cursor-grab text-[--text-muted] hover:text-[--text-secondary] shrink-0 select-none leading-none"
+          style={{ fontSize: 13 }}
           onClick={e => e.stopPropagation()}
         >⠿</span>
 
@@ -105,7 +119,7 @@ function ChapterItem({ chapter }: { chapter: Chapter }) {
         {(chapter.subChapters ?? []).length > 0 && (
           <button
             onClick={e => { e.stopPropagation(); toggleChapter(chapter.id) }}
-            className="text-gray-500 hover:text-gray-300 text-xs w-3 shrink-0"
+            className="text-[--text-muted] hover:text-[--text-secondary] text-[10px] w-3 shrink-0 transition-colors"
           >
             {chapter.expanded ? '▾' : '▸'}
           </button>
@@ -114,20 +128,20 @@ function ChapterItem({ chapter }: { chapter: Chapter }) {
         <InlineEdit
           value={chapter.title}
           onCommit={v => renameChapter(chapter.id, v)}
-          className="flex-1 text-sm"
+          className={`flex-1 text-sm font-medium leading-snug ${isActive ? 'text-[--gold-bright]' : 'text-[--text-secondary] group-hover:text-[--text-primary]'}`}
         />
 
         {/* Add sub-chapter */}
         <button
           onClick={e => { e.stopPropagation(); addSubChapter(chapter.id) }}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-blue-400 text-xs px-0.5 shrink-0"
+          className="opacity-0 group-hover:opacity-100 text-[--text-muted] hover:text-[--gold] text-xs px-0.5 shrink-0 transition-all"
           title="添加子章节"
         >+</button>
 
-        {/* Delete chapter */}
+        {/* Delete */}
         <button
           onClick={e => { e.stopPropagation(); if (confirm(`删除「${chapter.title}」及其所有内容？`)) deleteChapter(chapter.id) }}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 text-xs px-0.5 shrink-0"
+          className="opacity-0 group-hover:opacity-100 text-[--text-muted] hover:text-red-400 text-xs px-0.5 shrink-0 transition-all"
         >✕</button>
       </div>
 
@@ -161,12 +175,48 @@ export default function ChapterSidebar() {
   }
 
   return (
-    <aside className="w-52 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-gray-700">
-        <h1 className="text-white font-semibold text-sm tracking-wide">Vibe Research</h1>
+    <aside
+      className="w-52 shrink-0 flex flex-col h-full"
+      style={{
+        background: 'var(--bg-panel)',
+        borderRight: '1px solid var(--border-subtle)',
+      }}
+    >
+      {/* Brand */}
+      <div
+        className="px-4 pt-5 pb-4 shrink-0"
+        style={{ borderBottom: '1px solid var(--border-subtle)' }}
+      >
+        <div className="flex items-baseline gap-1.5">
+          <h1
+            className="font-display font-semibold tracking-wide leading-none"
+            style={{ fontSize: 16, color: 'var(--text-primary)' }}
+          >
+            Vibe
+          </h1>
+          <h1
+            className="font-display font-semibold tracking-wide leading-none"
+            style={{ fontSize: 16, color: 'var(--gold)' }}
+          >
+            Research
+          </h1>
+        </div>
+        <p className="mt-1 text-[10px] font-mono tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+          AI Research System
+        </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+      {/* Chapter label */}
+      <div
+        className="px-4 pt-3 pb-1.5 shrink-0"
+      >
+        <span className="text-[9px] font-mono tracking-[0.15em] uppercase" style={{ color: 'var(--text-muted)' }}>
+          章节
+        </span>
+      </div>
+
+      {/* Chapter list */}
+      <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={chapters.map(c => c.id)} strategy={verticalListSortingStrategy}>
             {chapters.map(chapter => (
@@ -176,12 +226,26 @@ export default function ChapterSidebar() {
         </DndContext>
       </div>
 
-      <div className="p-2 border-t border-gray-700 space-y-1">
+      {/* Footer actions */}
+      <div
+        className="p-2 space-y-1 shrink-0"
+        style={{ borderTop: '1px solid var(--border-subtle)' }}
+      >
         <button
           onClick={addChapter}
-          className="w-full text-sm text-gray-400 hover:text-white hover:bg-gray-700 py-2 rounded-lg transition-colors"
+          className="w-full text-xs py-2 rounded-md transition-all duration-150 text-left px-3 flex items-center gap-2"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)'
+            ;(e.currentTarget as HTMLButtonElement).style.background = 'var(--gold-glow)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+          }}
         >
-          + 新章节
+          <span className="text-base leading-none">+</span>
+          <span>新建章节</span>
         </button>
         <SettingsPanel />
       </div>

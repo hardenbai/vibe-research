@@ -29,7 +29,6 @@ function Section({ chapterId, subChapterId, title, onRename, modules, level, anc
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // local draft for title — only commit to store on blur / Enter (avoids per-keystroke global re-render)
   const [draft, setDraft] = useState(title)
   useEffect(() => { setDraft(title) }, [title])
   const commit = () => { if (draft !== title) onRename(draft) }
@@ -46,21 +45,41 @@ function Section({ chapterId, subChapterId, title, onRename, modules, level, anc
 
   return (
     <section id={anchorId} className="space-y-3 scroll-mt-24">
-      <div className={`flex items-center gap-2 ${isSub ? 'pt-4 border-t border-gray-800' : ''}`}>
+      {/* Section heading */}
+      <div
+        className="flex items-center gap-3"
+        style={isSub ? { paddingTop: 20, borderTop: '1px solid var(--border-subtle)' } : {}}
+      >
+        {isSub && (
+          <span
+            className="text-[10px] font-mono tracking-widest uppercase shrink-0"
+            style={{ color: 'var(--text-muted)' }}
+          >§</span>
+        )}
         <input
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className={`flex-1 bg-transparent text-white focus:outline-none border-b border-transparent focus:border-gray-600 transition-colors pb-0.5 ${
-            isSub ? 'text-base font-medium text-gray-200' : 'text-lg font-semibold'
-          }`}
+          className="flex-1 bg-transparent focus:outline-none pb-0.5 transition-colors"
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: isSub ? 16 : 20,
+            fontWeight: isSub ? 500 : 600,
+            color: 'var(--text-primary)',
+            borderBottom: '1px solid transparent',
+          }}
           placeholder={isSub ? '子章节标题' : '章节标题'}
+          onFocus={e => { (e.target as HTMLInputElement).style.borderBottomColor = 'var(--border-strong)' }}
+          onBlurCapture={e => { (e.target as HTMLInputElement).style.borderBottomColor = 'transparent' }}
         />
         {isSub && subChapterId && (
           <button
             onClick={() => { if (confirm(`删除「${title}」？`)) deleteSubChapter(chapterId, subChapterId) }}
-            className="text-gray-600 hover:text-red-400 text-xs px-1"
+            className="text-[10px] transition-colors shrink-0 px-1"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
           >✕</button>
         )}
       </div>
@@ -79,16 +98,49 @@ function Section({ chapterId, subChapterId, title, onRename, modules, level, anc
         </SortableContext>
       </DndContext>
 
-      <div className="flex gap-2">
+      {/* Add module buttons */}
+      <div className="flex gap-2 pt-1">
         <button
           onClick={() => addModule(chapterId, subChapterId, 'text')}
-          className="flex-1 py-2 border-2 border-dashed border-gray-700 hover:border-blue-500 text-gray-500 hover:text-blue-400 text-xs rounded-lg transition-colors"
+          className="flex-1 py-2 rounded-lg text-xs transition-all duration-150"
+          style={{
+            border: '1px dashed var(--border-default)',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--gold-dim)'
+            el.style.color = 'var(--gold)'
+            el.style.background = 'var(--gold-glow)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--border-default)'
+            el.style.color = 'var(--text-muted)'
+            el.style.background = 'transparent'
+          }}
         >
           + 文字模块
         </button>
         <button
           onClick={() => addModule(chapterId, subChapterId, 'chart')}
-          className="flex-1 py-2 border-2 border-dashed border-gray-700 hover:border-purple-500 text-gray-500 hover:text-purple-400 text-xs rounded-lg transition-colors"
+          className="flex-1 py-2 rounded-lg text-xs transition-all duration-150"
+          style={{
+            border: '1px dashed var(--border-default)',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = '#7e22ce'
+            el.style.color = '#c084fc'
+            el.style.background = 'rgba(168,85,247,0.06)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--border-default)'
+            el.style.color = 'var(--text-muted)'
+            el.style.background = 'transparent'
+          }}
         >
           + 图表模块
         </button>
@@ -145,7 +197,6 @@ export default function ChapterEditor() {
     URL.revokeObjectURL(url)
   }
 
-  // Scroll to selected sub-chapter when sidebar selection changes
   useEffect(() => {
     if (!chapter) return
     const targetId = activeSubChapterId
@@ -159,33 +210,66 @@ export default function ChapterEditor() {
 
   if (!chapter) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
-        从左侧选择或新建章节
+      <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ background: 'var(--bg-surface)' }}>
+        <p className="font-display text-2xl font-medium" style={{ color: 'var(--text-muted)' }}>
+          选择或新建章节
+        </p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+          从左侧导航开始撰写
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--bg-surface)' }}>
       {/* Column headers */}
-      <div className="shrink-0 flex items-center gap-3 px-6 py-3 border-b border-gray-700 bg-gray-900">
+      <div
+        className="shrink-0 flex items-center gap-3 px-6 py-3"
+        style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-panel)' }}
+      >
         <div className="w-6 shrink-0" />
         <div className="flex-1 grid grid-cols-2 gap-3">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3">底稿</div>
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3">报告</div>
+          <div
+            className="text-[10px] font-mono tracking-[0.12em] uppercase px-3"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            底稿
+          </div>
+          <div
+            className="text-[10px] font-mono tracking-[0.12em] uppercase px-3"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            报告
+          </div>
         </div>
         <button
           onClick={exportMarkdown}
           title="导出为 Markdown 文件"
-          className="shrink-0 px-2.5 py-1 text-[11px] text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-500 rounded transition-colors"
+          className="shrink-0 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded transition-all duration-150"
+          style={{
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--gold-dim)'
+            el.style.color = 'var(--gold)'
+            el.style.background = 'var(--gold-glow)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--border-default)'
+            el.style.color = 'var(--text-muted)'
+            el.style.background = 'transparent'
+          }}
         >
-          导出 MD
+          ↓ MD
         </button>
       </div>
 
-      {/* Scrollable content: chapter + all sub-chapters in one continuous view */}
+      {/* Scrollable content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        {/* Chapter section */}
         <Section
           chapterId={chapter.id}
           subChapterId={null}
@@ -196,7 +280,6 @@ export default function ChapterEditor() {
           anchorId={`chapter-${chapter.id}`}
         />
 
-        {/* All sub-chapter sections */}
         {chapter.subChapters.map(sub => (
           <Section
             key={sub.id}
@@ -210,10 +293,23 @@ export default function ChapterEditor() {
           />
         ))}
 
-        {/* Add sub-chapter at bottom */}
         <button
           onClick={() => addSubChapter(chapter.id)}
-          className="w-full py-2 border-2 border-dashed border-gray-800 hover:border-gray-600 text-gray-600 hover:text-gray-400 text-xs rounded-lg transition-colors"
+          className="w-full py-2.5 rounded-lg text-xs transition-all duration-150"
+          style={{
+            border: '1px dashed var(--border-subtle)',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--border-strong)'
+            el.style.color = 'var(--text-secondary)'
+          }}
+          onMouseLeave={e => {
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.borderColor = 'var(--border-subtle)'
+            el.style.color = 'var(--text-muted)'
+          }}
         >
           + 添加子章节
         </button>

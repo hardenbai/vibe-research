@@ -1,26 +1,151 @@
 @import "tailwindcss";
 
+/* ─── Design Tokens ───────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* backgrounds */
+  --bg-base:       #070c17;
+  --bg-panel:      #0b1120;
+  --bg-surface:    #0f172a;
+  --bg-card:       #111827;
+  --bg-card-hover: #14213d;
+
+  /* gold accent */
+  --gold:          #c8a84b;
+  --gold-dim:      #8f6e28;
+  --gold-glow:     rgba(200, 168, 75, 0.12);
+  --gold-bright:   #e8c96e;
+
+  /* teal for AI/success */
+  --teal:          #2dd4bf;
+  --teal-dim:      #0d9488;
+
+  /* red for stop/danger */
+  --red-accent:    #f87171;
+
+  /* text */
+  --text-primary:  #dde6f5;
+  --text-secondary:#7e94b2;
+  --text-muted:    #3d5070;
+  --text-gold:     #c8a84b;
+
+  /* borders */
+  --border-subtle: #111e33;
+  --border-default:#1a2d48;
+  --border-strong: #253d62;
+  --border-gold:   rgba(200, 168, 75, 0.3);
+
+  /* fonts */
+  --font-display:  var(--font-display, "Playfair Display", Georgia, serif);
+  --font-sans:     var(--font-sans, "DM Sans", system-ui, sans-serif);
+  --font-mono:     var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
 }
 
+/* ─── Tailwind theme extensions ───────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans:        var(--font-sans);
+  --font-mono:        var(--font-mono);
+
+  /* gold palette */
+  --color-gold-300: #e8c96e;
+  --color-gold-400: #c8a84b;
+  --color-gold-500: #9d7e32;
+  --color-gold-600: #7a5f1e;
+  --color-gold-glow: rgba(200, 168, 75, 0.12);
+
+  /* navy palette */
+  --color-navy-950: #070c17;
+  --color-navy-900: #0b1120;
+  --color-navy-850: #0f172a;
+  --color-navy-800: #111827;
+  --color-navy-750: #14213d;
+  --color-navy-700: #1a2d48;
+  --color-navy-600: #253d62;
+  --color-navy-500: #3a5a8a;
+
+  /* teal */
+  --color-teal-400: #2dd4bf;
+  --color-teal-600: #0d9488;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base ─────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Custom Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dim);
+}
+
+/* ─── Typography ───────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ─── Custom Animations ────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes goldPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s ease-out forwards;
+}
+
+/* ─── Gold active indicator ────────────────────────────────────── */
+.active-glow {
+  box-shadow: 0 0 0 1px var(--border-gold),
+              0 0 16px var(--gold-glow),
+              inset 0 0 0 1px var(--border-gold);
+}
+
+/* ─── Textarea Reset ───────────────────────────────────────────── */
+textarea {
+  resize: none;
+}
+
+/* ─── Input focus ring override ────────────────────────────────── */
+input[type="text"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+select:focus {
+  outline: none;
 }

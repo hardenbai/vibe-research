@@ -5,6 +5,19 @@ import { useStore } from '@/lib/store'
 import { PROVIDER_CONFIGS, getProviderModels, DEFAULT_PROVIDER_MODELS } from '@/lib/providers'
 import type { ProviderId, ModelOption } from '@/lib/types'
 
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 6,
+  fontSize: 12,
+  padding: '6px 10px',
+  fontFamily: 'var(--font-sans)',
+  outline: 'none',
+  transition: 'border-color 0.15s',
+}
+
 function ModelEditor({
   providerId,
   models,
@@ -32,10 +45,7 @@ function ModelEditor({
     setNewLabel('')
   }
 
-  const removeModel = (index: number) => {
-    const updated = models.filter((_, i) => i !== index)
-    onChange(updated)
-  }
+  const removeModel = (index: number) => onChange(models.filter((_, i) => i !== index))
 
   const startEdit = (index: number) => {
     setEditingIdx(index)
@@ -48,63 +58,50 @@ function ModelEditor({
     const id = editId.trim()
     const label = editLabel.trim() || id
     if (!id) return
-    // Check for duplicate IDs (excluding current)
     if (models.some((m, i) => m.id === id && i !== editingIdx)) return
-    const updated = models.map((m, i) => (i === editingIdx ? { id, label } : m))
-    onChange(updated)
+    onChange(models.map((m, i) => (i === editingIdx ? { id, label } : m)))
     setEditingIdx(null)
   }
 
   return (
     <div className="mt-3 space-y-2">
-      {/* Model list */}
-      <div className="space-y-1 max-h-48 overflow-y-auto">
+      <div className="space-y-1 max-h-40 overflow-y-auto">
         {models.length === 0 && (
-          <p className="text-gray-600 text-xs italic">暂无模型，请添加</p>
+          <p className="text-[11px] italic" style={{ color: 'var(--text-muted)' }}>暂无模型，请添加</p>
         )}
         {models.map((model, index) => (
           <div
             key={model.id + index}
-            className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-900 rounded border border-gray-700 group"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded group"
+            style={{ background: 'var(--bg-base)', border: '1px solid var(--border-subtle)' }}
           >
             {editingIdx === index ? (
               <>
-                <input
-                  value={editId}
-                  onChange={e => setEditId(e.target.value)}
-                  placeholder="模型 ID"
-                  className="flex-1 bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                <input value={editId} onChange={e => setEditId(e.target.value)} placeholder="模型 ID"
+                  style={{ ...inputStyle, flex: 1 }}
                   onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                  onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+                  onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
                 />
-                <input
-                  value={editLabel}
-                  onChange={e => setEditLabel(e.target.value)}
-                  placeholder="显示名称"
-                  className="flex-1 bg-gray-800 text-gray-200 text-xs rounded px-1.5 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                <input value={editLabel} onChange={e => setEditLabel(e.target.value)} placeholder="显示名称"
+                  style={{ ...inputStyle, flex: 1 }}
                   onKeyDown={e => { if (e.key === 'Enter') commitEdit() }}
+                  onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+                  onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
                 />
-                <button
-                  onClick={commitEdit}
-                  className="text-green-400 hover:text-green-300 text-xs px-1"
-                >✓</button>
-                <button
-                  onClick={() => setEditingIdx(null)}
-                  className="text-gray-500 hover:text-gray-300 text-xs px-1"
-                >✕</button>
+                <button onClick={commitEdit} className="text-[11px] px-1 transition-colors" style={{ color: '#4ade80' }}>✓</button>
+                <button onClick={() => setEditingIdx(null)} className="text-[11px] px-1 transition-colors" style={{ color: 'var(--text-muted)' }}>✕</button>
               </>
             ) : (
               <>
-                <span className="flex-1 text-gray-300 text-xs truncate">
+                <span className="flex-1 text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
                   {model.label}
-                  <span className="text-gray-600 ml-1">({model.id})</span>
+                  <span className="ml-1 font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>({model.id})</span>
                 </span>
-                <button
-                  onClick={() => startEdit(index)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-blue-400 text-xs px-1 transition-opacity"
-                >编辑</button>
-                <button
-                  onClick={() => removeModel(index)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 text-xs px-1 transition-opacity"
+                <button onClick={() => startEdit(index)} className="opacity-0 group-hover:opacity-100 text-[11px] px-1 transition-all" style={{ color: 'var(--gold-dim)' }}>编辑</button>
+                <button onClick={() => removeModel(index)} className="opacity-0 group-hover:opacity-100 text-[11px] px-1 transition-all" style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
                 >删除</button>
               </>
             )}
@@ -112,39 +109,32 @@ function ModelEditor({
         ))}
       </div>
 
-      {/* Add new model */}
       <div className="flex items-center gap-1.5">
-        <input
-          value={newId}
-          onChange={e => setNewId(e.target.value)}
-          placeholder="模型 ID (如 glm-4)"
-          className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-600"
+        <input value={newId} onChange={e => setNewId(e.target.value)} placeholder="模型 ID (如 glm-4)"
+          style={{ ...inputStyle, flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addModel() } }}
+          onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+          onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
         />
-        <input
-          value={newLabel}
-          onChange={e => setNewLabel(e.target.value)}
-          placeholder="显示名称 (可选)"
-          className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-600"
+        <input value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="显示名称 (可选)"
+          style={{ ...inputStyle, flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addModel() } }}
+          onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+          onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
         />
-        <button
-          onClick={addModel}
-          disabled={!newId.trim()}
-          className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs rounded transition-colors"
-        >
-          添加
-        </button>
+        <button onClick={addModel} disabled={!newId.trim()}
+          className="px-3 py-1.5 rounded text-[11px] transition-all disabled:opacity-40"
+          style={{ background: 'var(--gold-glow)', border: '1px solid var(--border-gold)', color: 'var(--gold)', whiteSpace: 'nowrap' }}
+        >添加</button>
       </div>
 
-      {/* Reset to default */}
       {isCustomized && (
-        <button
-          onClick={() => onChange([...(DEFAULT_PROVIDER_MODELS[providerId] ?? [])])}
-          className="text-xs text-gray-500 hover:text-yellow-400 transition-colors"
-        >
-          ↺ 恢复默认模型列表
-        </button>
+        <button onClick={() => onChange([...(DEFAULT_PROVIDER_MODELS[providerId] ?? [])])}
+          className="text-[11px] transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+        >↺ 恢复默认模型列表</button>
       )}
     </div>
   )
@@ -152,10 +142,7 @@ function ModelEditor({
 
 export default function SettingsPanel() {
   const [open, setOpen] = useState(false)
-  const {
-    aiSettings, updateAISettings, setApiKey,
-    setProviderModels, resetProviderModels,
-  } = useStore()
+  const { aiSettings, updateAISettings, setApiKey, setProviderModels, resetProviderModels } = useStore()
   const [keyDraft, setKeyDraft] = useState<Partial<Record<ProviderId, string>>>({})
   const [managingModels, setManagingModels] = useState<ProviderId | null>(null)
 
@@ -181,11 +168,24 @@ export default function SettingsPanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs transition-all duration-150"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={e => {
+          const el = e.currentTarget as HTMLButtonElement
+          el.style.color = 'var(--text-secondary)'
+          el.style.background = 'var(--bg-card-hover)'
+        }}
+        onMouseLeave={e => {
+          const el = e.currentTarget as HTMLButtonElement
+          el.style.color = 'var(--text-muted)'
+          el.style.background = 'transparent'
+        }}
       >
-        <span>⚙</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
         <span>AI 设置</span>
-        <span className="ml-auto text-gray-600 truncate max-w-[80px]">
+        <span className="ml-auto text-[10px] font-mono truncate max-w-[70px]" style={{ color: 'var(--gold-dim)' }}>
           {currentConfig.label}
         </span>
       </button>
@@ -193,34 +193,85 @@ export default function SettingsPanel() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(4,8,18,0.8)', backdropFilter: 'blur(4px)' }}
+      onClick={() => setOpen(false)}
+    >
       <div
-        className="bg-gray-800 border border-gray-600 rounded-xl w-[520px] max-h-[85vh] overflow-y-auto shadow-2xl"
+        className="w-[540px] max-h-[85vh] overflow-y-auto rounded-xl shadow-2xl"
+        style={{
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border-default)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px var(--border-subtle)',
+        }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
-          <h2 className="text-white font-semibold">AI 设置</h2>
-          <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-white text-lg">✕</button>
+        {/* Modal header */}
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          <div>
+            <h2 className="font-display text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>AI 设置</h2>
+            <p className="text-[10px] font-mono mt-0.5" style={{ color: 'var(--text-muted)' }}>配置模型与接口</p>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            className="w-7 h-7 flex items-center justify-center rounded-md transition-all"
+            style={{ color: 'var(--text-muted)', background: 'transparent' }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.color = 'var(--text-primary)'
+              el.style.background = 'var(--bg-card)'
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.color = 'var(--text-muted)'
+              el.style.background = 'transparent'
+            }}
+          >✕</button>
         </div>
 
-        <div className="p-5 space-y-6">
+        <div className="p-6 space-y-6">
           {/* Provider selector */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">选择服务商</label>
+            <label className="block text-[9px] font-mono tracking-[0.15em] uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
+              服务商
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {PROVIDER_CONFIGS.map(p => (
                 <button
                   key={p.id}
                   onClick={() => handleProviderChange(p.id)}
-                  className={`px-3 py-2 rounded-lg text-sm text-left border transition-colors ${
-                    aiSettings.providerId === p.id
-                      ? 'border-blue-500 bg-blue-600/20 text-white'
-                      : 'border-gray-600 text-gray-300 hover:border-gray-500'
-                  }`}
+                  className="px-3 py-2.5 rounded-lg text-sm text-left transition-all duration-150"
+                  style={aiSettings.providerId === p.id ? {
+                    background: 'var(--gold-glow)',
+                    border: '1px solid var(--border-gold)',
+                    color: 'var(--gold-bright)',
+                  } : {
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={e => {
+                    if (aiSettings.providerId !== p.id) {
+                      const el = e.currentTarget as HTMLButtonElement
+                      el.style.borderColor = 'var(--border-strong)'
+                      el.style.color = 'var(--text-primary)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (aiSettings.providerId !== p.id) {
+                      const el = e.currentTarget as HTMLButtonElement
+                      el.style.borderColor = 'var(--border-subtle)'
+                      el.style.color = 'var(--text-secondary)'
+                    }
+                  }}
                 >
                   {p.label}
                   {aiSettings.apiKeys[p.id] && (
-                    <span className="ml-1 text-green-400 text-xs">✓</span>
+                    <span className="ml-1.5 text-[10px]" style={{ color: '#4ade80' }}>✓</span>
                   )}
                 </button>
               ))}
@@ -229,11 +280,16 @@ export default function SettingsPanel() {
 
           {/* Model selector */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-gray-400 uppercase tracking-wider">选择模型</label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[9px] font-mono tracking-[0.15em] uppercase" style={{ color: 'var(--text-muted)' }}>
+                模型
+              </label>
               <button
                 onClick={() => setManagingModels(managingModels === aiSettings.providerId ? null : aiSettings.providerId)}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-[11px] transition-colors"
+                style={{ color: 'var(--gold-dim)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--gold-dim)' }}
               >
                 {managingModels === aiSettings.providerId ? '收起' : '管理模型'}
               </button>
@@ -242,10 +298,18 @@ export default function SettingsPanel() {
             <select
               value={aiSettings.modelId}
               onChange={e => updateAISettings({ modelId: e.target.value })}
-              className="w-full bg-gray-900 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none mb-2"
+              style={{
+                ...inputStyle,
+                fontSize: 13,
+                padding: '8px 10px',
+                cursor: 'pointer',
+                marginBottom: 8,
+              }}
+              onFocus={e => { (e.target as HTMLSelectElement).style.borderColor = 'var(--gold-dim)' }}
+              onBlur={e => { (e.target as HTMLSelectElement).style.borderColor = 'var(--border-default)' }}
             >
               {currentModels.map(m => (
-                <option key={m.id} value={m.id}>{m.label}</option>
+                <option key={m.id} value={m.id} style={{ background: 'var(--bg-surface)' }}>{m.label}</option>
               ))}
             </select>
 
@@ -260,11 +324,16 @@ export default function SettingsPanel() {
 
           {/* API Keys */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">API Keys</label>
+            <label className="block text-[9px] font-mono tracking-[0.15em] uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
+              API Keys
+            </label>
             <div className="space-y-3">
               {PROVIDER_CONFIGS.map(p => (
                 <div key={p.id}>
-                  <div className="text-xs text-gray-500 mb-1">{p.label}</div>
+                  <div className="text-[11px] mb-1 font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    {p.label}
+                    {aiSettings.apiKeys[p.id] && <span className="ml-1.5 text-[10px]" style={{ color: '#4ade80' }}>已配置</span>}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="password"
@@ -272,22 +341,30 @@ export default function SettingsPanel() {
                       value={keyDraft[p.id] ?? ''}
                       onChange={e => setKeyDraft(d => ({ ...d, [p.id]: e.target.value }))}
                       onKeyDown={e => { if (e.key === 'Enter') saveKey(p.id) }}
-                      className="flex-1 bg-gray-900 text-white text-xs border border-gray-600 rounded-lg px-3 py-2 focus:border-blue-500 focus:outline-none placeholder-gray-600"
+                      style={{ ...inputStyle, flex: 1, fontSize: 12 }}
+                      onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
+                      onBlur={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--border-default)' }}
                     />
                     <button
                       onClick={() => saveKey(p.id)}
                       disabled={!keyDraft[p.id]?.trim()}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs rounded-lg transition-colors"
-                    >
-                      保存
-                    </button>
+                      className="px-3 py-1.5 rounded text-[11px] transition-all disabled:opacity-40"
+                      style={{
+                        background: 'var(--gold-glow)',
+                        border: '1px solid var(--border-gold)',
+                        color: 'var(--gold)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >保存</button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-xs text-gray-600">API Key 和模型列表仅存储在本地浏览器，不会上传到服务器。</p>
+          <p className="text-[10px] font-mono" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
+            API Key 及模型配置仅存储在本地浏览器，不会上传至服务器。
+          </p>
         </div>
       </div>
     </div>
