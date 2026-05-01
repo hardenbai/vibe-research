@@ -1,62 +1,73 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Sidebar (dark) ──────────────────────────────── */
-  --sidebar-bg:      #111111;
-  --sidebar-hover:   rgba(255,255,255,0.07);
-  --sidebar-active:  rgba(10,132,255,0.18);
-  --sidebar-border:  rgba(255,255,255,0.07);
+  /* ── Base surfaces (darkest → elevated) ─────────── */
+  --bg-0:  #0d0d0e;   /* app root / deepest bg */
+  --bg-1:  #111113;   /* sidebar */
+  --bg-2:  #18181b;   /* panels / cards */
+  --bg-3:  #1e1e22;   /* inner cards / inputs */
+  --bg-4:  #242428;   /* hover / active surface */
 
-  /* ── Main workspace (light) ─────────────────────── */
-  --ws-bg:           #f5f5f7;   /* Apple's light gray */
-  --ws-topbar:       #ffffff;
+  /* ── Borders ──────────────────────────────────────── */
+  --b1: rgba(255,255,255,0.07);
+  --b2: rgba(255,255,255,0.13);
 
-  /* ── Cards (pure white, elevated) ──────────────── */
-  --card:            #ffffff;
-  --card-shadow:     0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
-  --card-shadow-active: 0 0 0 2px var(--accent), 0 4px 16px rgba(10,132,255,0.12);
+  /* ── Accent — Anthropic amber/orange ─────────────── */
+  --accent:        #D4915A;
+  --accent-hover:  #E0A46A;
+  --accent-light:  rgba(212,145,90,0.12);
+  --accent-border: rgba(212,145,90,0.32);
+  --accent-glow:   0 0 0 3px rgba(212,145,90,0.18);
 
-  /* ── Input fields ────────────────────────────────── */
-  --input-bg:        #f5f5f7;
-  --input-border:    rgba(0,0,0,0.12);
-  --input-focus-shadow: 0 0 0 3px rgba(10,132,255,0.18);
+  /* ── Status ───────────────────────────────────────── */
+  --green:        #3DD68C;
+  --green-light:  rgba(61,214,140,0.1);
+  --green-border: rgba(61,214,140,0.28);
+  --red:          #FF6059;
+  --red-light:    rgba(255,96,89,0.1);
+  --red-border:   rgba(255,96,89,0.28);
 
-  /* ── Accent ──────────────────────────────────────── */
-  --accent:          #0071e3;   /* Apple's product blue */
-  --accent-hover:    #0077ed;
-  --accent-light:    rgba(0,113,227,0.1);
-  --accent-border:   rgba(0,113,227,0.35);
+  /* ── Text ─────────────────────────────────────────── */
+  --t1: #EAEAED;   /* primary */
+  --t2: #A0A0AB;   /* secondary */
+  --t3: #60606E;   /* tertiary / labels */
+  --t4: #383840;   /* placeholder / disabled */
 
-  /* ── Status ──────────────────────────────────────── */
-  --green:           #28cd41;
-  --green-light:     rgba(40,205,65,0.1);
-  --green-border:    rgba(40,205,65,0.3);
-  --red:             #ff3b30;
-  --red-light:       rgba(255,59,48,0.1);
-  --red-border:      rgba(255,59,48,0.3);
+  /* ── Dividers ─────────────────────────────────────── */
+  --divider: rgba(255,255,255,0.06);
 
-  /* ── Text on light backgrounds ───────────────────── */
-  --t1:  #1d1d1f;   /* Apple's primary text, near-black */
-  --t2:  #3d3d3f;   /* secondary */
-  --t3:  #6e6e73;   /* tertiary / labels */
-  --t4:  #aeaeb2;   /* placeholder / disabled */
-
-  /* ── Text on dark sidebar ────────────────────────── */
-  --st1: #f5f5f7;
-  --st2: #aeaeb2;
-  --st3: #636366;
-
-  /* ── Dividers (light context) ────────────────────── */
-  --divider: rgba(0,0,0,0.08);
-
-  /* ── Fonts ───────────────────────────────────────── */
+  /* ── Fonts ────────────────────────────────────────── */
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text",
           "Helvetica Neue", Arial, sans-serif;
-  --mono: "SF Mono", ui-monospace, "Fira Code", monospace;
+  --mono: "SF Mono", ui-monospace, "Fira Code", "Cascadia Code", monospace;
+
+  /* ── Shadows ──────────────────────────────────────── */
+  --shadow-panel: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px var(--b1);
+  --shadow-active: 0 0 0 1px var(--accent-border), var(--accent-glow);
+  --shadow-float: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px var(--b2);
+
+  /* ── Input ────────────────────────────────────────── */
+  --input-bg:     var(--bg-3);
+  --input-border: var(--b1);
+  --input-focus-shadow: var(--accent-glow);
+
+  /* Legacy aliases so existing references still resolve */
+  --card:             var(--bg-2);
+  --card-shadow:      var(--shadow-panel);
+  --card-shadow-active: var(--shadow-active);
+  --ws-bg:            var(--bg-0);
+  --ws-topbar:        var(--bg-1);
+  --sidebar-bg:       var(--bg-1);
+  --sidebar-hover:    rgba(255,255,255,0.05);
+  --sidebar-active:   rgba(212,145,90,0.1);
+  --sidebar-border:   var(--b1);
+  --st1: #EAEAED;
+  --st2: #A0A0AB;
+  --st3: #60606E;
 }
 
 @theme inline {
-  --color-background: var(--ws-bg);
+  --color-background: var(--bg-0);
   --color-foreground: var(--t1);
   --font-sans: var(--font);
   --font-mono: var(--mono);
@@ -66,10 +77,10 @@
 html, body { height: 100%; }
 
 body {
-  background: var(--ws-bg);
+  background: var(--bg-0);
   color: var(--t1);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
@@ -78,22 +89,23 @@ body {
 textarea { resize: none; }
 input:focus, textarea:focus, select:focus { outline: none; }
 
-/* Thin scrollbar for light context */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* Thin dark scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
-
-/* Sidebar scrollbar stays dark */
-.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); }
-.sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  50% { opacity: 0.3; }
 }
-.fade-up { animation: fadeUp 0.2s cubic-bezier(.22,1,.36,1) both; }
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212,145,90,0.25); }
+  50% { box-shadow: 0 0 0 4px rgba(212,145,90,0); }
+}
+
+.fade-up { animation: fadeUp 0.18s cubic-bezier(.22,1,.36,1) both; }

@@ -18,36 +18,36 @@ export default function ModuleRow({ chapterId, subChapterId, module, index }: {
   return (
     <div ref={setNodeRef}
       className="group fade-up"
-      style={{ display: 'flex', gap: 10, opacity: isDragging ? 0.35 : 1, transform: CSS.Transform.toString(transform), transition }}
+      style={{ display: 'flex', gap: 8, opacity: isDragging ? 0.3 : 1, transform: CSS.Transform.toString(transform), transition }}
     >
       {/* Gutter */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, paddingTop: 12, width: 20, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, paddingTop: 10, width: 18, flexShrink: 0 }}>
         <span {...attributes} {...listeners}
           className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab select-none"
-          style={{ color: 'var(--t4)', fontSize: 14 }}>⠿</span>
-        <span style={{ fontSize: 11, color: 'var(--t4)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
+          style={{ color: 'var(--t4)', fontSize: 12 }}>⠿</span>
+        <span style={{ fontSize: 10, color: 'var(--t4)', fontFamily: 'var(--mono)' }}>{String(index + 1).padStart(2, '0')}</span>
         <span style={{
-          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
-          padding: '2px 5px', borderRadius: 4,
-          background: isChart ? 'rgba(155,81,200,0.08)' : 'var(--accent-light)',
-          color: isChart ? '#9b51c8' : 'var(--accent)',
-          border: `1px solid ${isChart ? 'rgba(155,81,200,0.2)' : 'var(--accent-border)'}`,
-        }}>{isChart ? '图' : '文'}</span>
+          fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+          padding: '2px 4px', borderRadius: 3, fontFamily: 'var(--mono)',
+          background: isChart ? 'rgba(191,90,242,0.1)' : 'var(--accent-light)',
+          color: isChart ? '#bf5af2' : 'var(--accent)',
+          border: `1px solid ${isChart ? 'rgba(191,90,242,0.25)' : 'var(--accent-border)'}`,
+        }}>{isChart ? 'img' : 'txt'}</span>
         <button onClick={() => { if (confirm('删除这个模块？')) deleteModule(chapterId, subChapterId, module.id) }}
           className="opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: 'var(--t4)', fontSize: 11, marginTop: 2, background: 'none', border: 'none', cursor: 'pointer' }}
+          style={{ color: 'var(--t4)', fontSize: 10, marginTop: 2, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)' }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}>✕</button>
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}>rm</button>
       </div>
 
       {/* Two columns */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, minWidth: 0 }}>
         <DraftBlock chapterId={chapterId} subChapterId={subChapterId} module={module} />
         <div style={{
-          borderRadius: 12,
-          outline: isActive ? `2px solid var(--accent)` : 'none',
+          borderRadius: 8,
+          outline: isActive ? `1px solid var(--accent-border)` : 'none',
           outlineOffset: 2,
-          transition: 'outline 0.15s',
+          transition: 'outline 0.12s',
         }}>
           <ReportBlock chapterId={chapterId} subChapterId={subChapterId} module={module} />
         </div>

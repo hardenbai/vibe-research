@@ -24,11 +24,15 @@ function Section({ chapterId, subChapterId, title, onRename, onDelete, modules, 
   const isSub = level === 'subchapter'
 
   return (
-    <section id={anchorId} style={{ scrollMarginTop: 64 }}>
-      {isSub && <hr style={{ border: 'none', borderTop: '1px solid var(--divider)', margin: '36px 0 28px' }} />}
+    <section id={anchorId} style={{ scrollMarginTop: 56 }}>
+      {isSub && <div style={{ height: 1, background: 'var(--b1)', margin: '32px 0 24px' }} />}
 
       {/* Title row */}
-      <div className="group flex items-baseline gap-3" style={{ marginBottom: 18 }}>
+      <div className="group flex items-baseline gap-3" style={{ marginBottom: 16 }}>
+        <span style={{
+          fontSize: 10, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)',
+          textTransform: 'uppercase', letterSpacing: '0.08em', paddingTop: 4, flexShrink: 0,
+        }}>{isSub ? '##' : '#'}</span>
         <input value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={() => { if (draft !== title) onRename(draft) }}
@@ -36,17 +40,17 @@ function Section({ chapterId, subChapterId, title, onRename, onDelete, modules, 
           style={{
             flex: 1, background: 'transparent', border: 'none', outline: 'none',
             color: 'var(--t1)', fontFamily: 'var(--font)',
-            fontSize: isSub ? 21 : 28, fontWeight: isSub ? 600 : 700,
+            fontSize: isSub ? 18 : 24, fontWeight: isSub ? 600 : 700,
             letterSpacing: isSub ? '-0.02em' : '-0.03em',
           }}
-          placeholder={isSub ? '子章节标题' : '章节标题'}
+          placeholder={isSub ? 'Sub-chapter title' : 'Chapter title'}
         />
         {onDelete && (
           <button onClick={onDelete}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-sm shrink-0"
-            style={{ color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer' }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-xs shrink-0"
+            style={{ color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)' }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}>删除</button>
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}>rm</button>
         )}
       </div>
 
@@ -60,32 +64,33 @@ function Section({ chapterId, subChapterId, title, onRename, onDelete, modules, 
             modules.findIndex(m => m.id === over.id))
         }}>
         <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {modules.map((m, i) => <ModuleRow key={m.id} chapterId={chapterId} subChapterId={subChapterId} module={m} index={i} />)}
           </div>
         </SortableContext>
       </DndContext>
 
       {/* Add buttons */}
-      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
         {(['text', 'chart'] as const).map(type => (
           <button key={type} onClick={() => addModule(chapterId, subChapterId, type)}
             style={{
-              flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 500,
-              background: 'var(--card)', color: 'var(--t3)', cursor: 'pointer',
-              border: '1.5px dashed var(--divider)', boxShadow: 'none', transition: 'all 0.15s',
+              flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 11.5, fontWeight: 500,
+              background: 'transparent', color: 'var(--t4)', cursor: 'pointer',
+              border: '1px dashed var(--b1)', transition: 'all 0.12s',
+              fontFamily: 'var(--mono)',
             }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement
-              el.style.borderColor = type === 'chart' ? 'rgba(191,90,242,0.4)' : 'var(--accent-border)'
-              el.style.color = type === 'chart' ? '#9b51c8' : 'var(--accent)'
-              el.style.background = type === 'chart' ? 'rgba(191,90,242,0.04)' : 'var(--accent-light)'
+              el.style.borderColor = type === 'chart' ? 'rgba(191,90,242,0.3)' : 'var(--accent-border)'
+              el.style.color = type === 'chart' ? '#bf5af2' : 'var(--accent)'
+              el.style.background = type === 'chart' ? 'rgba(191,90,242,0.06)' : 'var(--accent-light)'
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLButtonElement
-              el.style.borderColor = 'var(--divider)'; el.style.color = 'var(--t3)'; el.style.background = 'var(--card)'
+              el.style.borderColor = 'var(--b1)'; el.style.color = 'var(--t4)'; el.style.background = 'transparent'
             }}
-          >{type === 'text' ? '+ 文字模块' : '+ 图表模块'}</button>
+          >+ {type === 'text' ? 'text block' : 'chart block'}</button>
         ))}
       </div>
     </section>
@@ -128,47 +133,62 @@ export default function ChapterEditor() {
   }
 
   if (!chapter) return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--ws-bg)', gap: 8 }}>
-      <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--t3)' }}>选择或新建章节</p>
-      <p style={{ fontSize: 14, color: 'var(--t4)' }}>从左侧导航开始撰写</p>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-0)', gap: 10 }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 10,
+        background: 'linear-gradient(135deg, #D4915A 0%, #C17840 100%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 13 13" fill="none">
+          <path d="M6.5 1L9.5 4.5L12 3.5L10 7L12 8.5L8.5 9.5L8 12L6.5 9.5L5 12L4.5 9.5L1 8.5L3 7L1 3.5L3.5 4.5L6.5 1Z" fill="white" fillOpacity="0.9"/>
+        </svg>
+      </div>
+      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--t2)', fontFamily: 'var(--mono)' }}>select a chapter</p>
+      <p style={{ fontSize: 12, color: 'var(--t4)', fontFamily: 'var(--mono)' }}>or create a new one →</p>
     </div>
   )
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--ws-bg)' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)' }}>
       {/* Top bar */}
       <div style={{
         flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 32px', height: 50,
-        background: 'var(--ws-topbar)', borderBottom: '1px solid var(--divider)',
+        padding: '0 24px', height: 44,
+        background: 'var(--bg-1)', borderBottom: '1px solid var(--b1)',
       }}>
-        {/* Column labels */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingLeft: 28 }}>
-          {['底稿', '报告'].map(l => (
-            <span key={l} style={{ fontSize: 11, fontWeight: 700, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{l}</span>
-          ))}
+        {/* breadcrumb + column labels */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+          <span style={{ fontSize: 11, color: 'var(--t4)', fontFamily: 'var(--mono)' }}>
+            {chapter.title}{activeSubChapterId ? ` / ${chapter.subChapters.find(s => s.id === activeSubChapterId)?.title}` : ''}
+          </span>
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingLeft: 24 }}>
+            {['draft', 'report'].map(l => (
+              <span key={l} style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--mono)' }}>{l}</span>
+            ))}
+          </div>
         </div>
         {/* Export */}
         <button onClick={exportMd}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '5px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500,
             background: 'transparent', color: 'var(--t3)',
-            border: '1px solid var(--divider)', cursor: 'pointer', transition: 'all 0.15s',
+            border: '1px solid var(--b1)', cursor: 'pointer', transition: 'all 0.12s',
+            fontFamily: 'var(--mono)',
           }}
-          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--t1)'; el.style.borderColor = 'rgba(0,0,0,0.18)' }}
-          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--divider)' }}
+          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--accent-light)'; el.style.color = 'var(--accent)'; el.style.borderColor = 'var(--accent-border)' }}
+          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--b1)' }}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          导出 MD
+          export .md
         </button>
       </div>
 
       {/* Scrollable content */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '36px 40px 80px' }}>
-        <div style={{ maxWidth: 1280 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 80px' }}>
+        <div style={{ maxWidth: 1360 }}>
           <Section chapterId={chapter.id} subChapterId={null} title={chapter.title}
             onRename={v => renameChapter(chapter.id, v)}
             modules={chapter.modules} level="chapter" anchorId={`chap-${chapter.id}`} />
@@ -180,16 +200,13 @@ export default function ChapterEditor() {
               modules={sub.modules} level="subchapter" anchorId={`sub-${sub.id}`} />
           ))}
 
-          <div style={{ marginTop: 44, paddingTop: 20, borderTop: '1px solid var(--divider)' }}>
+          <div style={{ marginTop: 40, paddingTop: 16, borderTop: '1px solid var(--b1)' }}>
             <button onClick={() => addSubChapter(chapter.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.12s', fontFamily: 'var(--mono)' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              添加子章节
+              + add sub-chapter
             </button>
           </div>
         </div>
