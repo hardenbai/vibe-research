@@ -8,20 +8,21 @@ export async function captureScreenshot(): Promise<{ imageBase64: string; url: s
       video.muted = true
 
       video.addEventListener('loadedmetadata', () => {
-        video.play()
-        setTimeout(() => {
-          const canvas = document.createElement('canvas')
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
-          canvas.getContext('2d')?.drawImage(video, 0, 0)
-          stream.getTracks().forEach(t => t.stop())
+        video.play().catch(() => {})
+      })
 
-          const imageBase64 = canvas.toDataURL('image/png')
+      video.addEventListener('loadeddata', () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d')?.drawImage(video, 0, 0)
+        stream.getTracks().forEach(t => t.stop())
 
-          navigator.clipboard.readText()
-            .then(text => resolve({ imageBase64, url: /^https?:\/\//.test(text) ? text : '' }))
-            .catch(() => resolve({ imageBase64, url: '' }))
-        }, 300)
+        const imageBase64 = canvas.toDataURL('image/png')
+
+        navigator.clipboard.readText()
+          .then(text => resolve({ imageBase64, url: /^https?:\/\//.test(text) ? text : '' }))
+          .catch(() => resolve({ imageBase64, url: '' }))
       })
 
       video.addEventListener('error', () => {

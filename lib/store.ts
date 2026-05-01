@@ -40,8 +40,8 @@ interface Actions {
   updateAISettings: (settings: Partial<AISettings>) => void
   setApiKey: (providerId: ProviderId, key: string) => void
 
-  // active source & module
-  setActiveSource: (moduleId: string, sourceId: string) => void
+  // active source & module — mutually exclusive global selection
+  setActiveSource: (sourceId: string | null) => void
   setActiveModule: (moduleId: string | null) => void
 
   // custom models
@@ -107,7 +107,7 @@ export const useStore = create<AppState & Actions>()(
       activeChapterId: null,
       activeSubChapterId: null,
       aiSettings: DEFAULT_SETTINGS,
-      activeSourceIds: {},
+      activeSourceId: null,
       activeModuleId: null,
 
       // --- chapter ---
@@ -118,13 +118,23 @@ export const useStore = create<AppState & Actions>()(
         }),
 
       renameChapter: (id, title) =>
-        set(s => ({ chapters: s.chapters.map(c => c.id === id ? { ...c, title } : c) })),
+        set(s => {
+          const safe = title.trim() || '未命名章节'
+          return { chapters: s.chapters.map(c => c.id === id ? { ...c, title: safe } : c) }
+        }),
 
       deleteChapter: (id) =>
         set(s => {
           const chapters = s.chapters.filter(c => c.id !== id)
           const activeChapterId = s.activeChapterId === id ? (chapters[0]?.id ?? null) : s.activeChapterId
-          return { chapters, activeChapterId, activeSubChapterId: null }
+          // also clear ephemeral active selection if we deleted the chapter that owned it
+          return {
+            chapters,
+            activeChapterId,
+            activeSubChapterId: null,
+            activeSourceId: null,
+            activeModuleId: null,
+          }
         }),
 
       reorderChapters: (from, to) =>
@@ -162,22 +172,27 @@ export const useStore = create<AppState & Actions>()(
         }),
 
       renameSubChapter: (chapterId, subId, title) =>
-        set(s => ({
-          chapters: s.chapters.map(c =>
-            c.id === chapterId
-              ? { ...c, subChapters: (c.subChapters ?? []).map(s => s.id === subId ? { ...s, title } : s) }
-              : c
-          ),
-        })),
+        set(s => {
+          const safe = title.trim() || '未命名子章节'
+          return {
+            chapters: s.chapters.map(c =>
+              c.id === chapterId
+                ? { ...c, subChapters: (c.subChapters ?? []).map(sc => sc.id === subId ? { ...sc, title: safe } : sc) }
+                : c
+            ),
+          }
+        }),
 
       deleteSubChapter: (chapterId, subId) =>
         set(s => ({
           chapters: s.chapters.map(c =>
             c.id === chapterId
-              ? { ...c, subChapters: (c.subChapters ?? []).filter(s => s.id !== subId) }
+              ? { ...c, subChapters: (c.subChapters ?? []).filter(sc => sc.id !== subId) }
               : c
           ),
           activeSubChapterId: s.activeSubChapterId === subId ? null : s.activeSubChapterId,
+          activeSourceId: null,
+          activeModuleId: null,
         })),
 
       setActiveSubChapter: (chapterId, subId) =>
@@ -187,11 +202,6 @@ export const useStore = create<AppState & Actions>()(
       addModule: (chapterId, subChapterId, type = 'text') =>
         set(s => ({
           chapters: mapModules(s.chapters, chapterId, subChapterId, ms => [...ms, makeModule(type)]),
-        })),
-
-      deleteModule: (chapterId, subChapterId, moduleId) =>
-        set(s => ({
-          chapters: mapModules(s.chapters, chapterId, subChapterId, ms => ms.filter(m => m.id !== moduleId)),
         })),
 
       reorderModules: (chapterId, subChapterId, from, to) =>
@@ -217,15 +227,24 @@ export const useStore = create<AppState & Actions>()(
           const newSource = makeSource()
           return {
             chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs => [...srcs, newSource]),
-            activeSourceIds: { ...s.activeSourceIds, [moduleId]: newSource.id },
+            // auto-activate the newly added card so paste/⌘⇧S land on it
+            activeSourceId: newSource.id,
+            activeModuleId: null,
           }
         }),
 
-      setActiveSource: (moduleId, sourceId) =>
-        set(s => ({ activeSourceIds: { ...s.activeSourceIds, [moduleId]: sourceId } })),
+      deleteModule: (chapterId, subChapterId, moduleId) =>
+        set(s => ({
+          chapters: mapModules(s.chapters, chapterId, subChapterId, ms => ms.filter(m => m.id !== moduleId)),
+          activeModuleId: s.activeModuleId === moduleId ? null : s.activeModuleId,
+        })),
+
+      // Activation: source and module are mutually exclusive — only one card highlighted globally
+      setActiveSource: (sourceId) =>
+        set({ activeSourceId: sourceId, activeModuleId: null }),
 
       setActiveModule: (moduleId) =>
-        set({ activeModuleId: moduleId }),
+        set(moduleId ? { activeModuleId: moduleId, activeSourceId: null } : { activeModuleId: null }),
 
       removeDraftSource: (chapterId, subChapterId, moduleId, sourceId) =>
         set(s => ({
@@ -313,7 +332,13 @@ export const useStore = create<AppState & Actions>()(
     }),
     {
       name: 'vibe-research-store',
-      version: 4,
+      version: 5,
+      // activeSourceId / activeModuleId are ephemeral UI state — don't persist
+      partialize: (s) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { activeSourceId, activeModuleId, ...rest } = s
+        return rest
+      },
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>
 
@@ -354,11 +379,17 @@ export const useStore = create<AppState & Actions>()(
           customModels: (aiSettings.customModels as Record<string, unknown> | undefined) ?? {},
         }
 
+        // v5: drop old activeSourceIds (per-module map), use single global activeSourceId
+        const { activeSourceIds: _drop, ...rest } = state as Record<string, unknown> & { activeSourceIds?: unknown }
+        void _drop
+
         return {
-          ...state,
+          ...rest,
           chapters,
           activeSubChapterId: (state.activeSubChapterId as string | null) ?? null,
           aiSettings: migratedAISettings,
+          activeSourceId: null,
+          activeModuleId: null,
         }
       },
     }

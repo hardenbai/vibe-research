@@ -4,6 +4,7 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { captureScreenshot } from '@/lib/screenCapture'
 import { setActiveCaptureHandler } from '@/lib/activeCapture'
+import { fileToCompressedDataUrl, compressDataUrl } from '@/lib/imageUtils'
 import type { Module, DraftSource } from '@/lib/types'
 
 interface Props {
@@ -23,8 +24,6 @@ interface SourceCardProps {
   onActivate: () => void
 }
 
-const BOOKMARKLET_CODE = `javascript:(function(){const u=encodeURIComponent(location.href);const t=encodeURIComponent(document.title);window.open('https://pb44ujxdftp6y.ok.kimi.link/?captureUrl='+u+'&captureTitle='+t,'_blank');})();`
-
 function SourceCard({ chapterId, subChapterId, module, source, index, total, isActive, onActivate }: SourceCardProps) {
   const { updateDraftSource, removeDraftSource } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -36,14 +35,18 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
     [chapterId, subChapterId, module.id, source.id, updateDraftSource]
   )
 
-  const handleImage = useCallback((file: File) => {
-    const reader = new FileReader()
-    reader.onload = e => update({ imageBase64: e.target?.result as string })
-    reader.readAsDataURL(file)
+  const handleImage = useCallback(async (file: File) => {
+    try {
+      const compressed = await fileToCompressedDataUrl(file)
+      update({ imageBase64: compressed })
+    } catch {
+      // ignore: compressDataUrl already falls back to original on error
+    }
   }, [update])
 
-  const applyCapture = useCallback((imageBase64: string, url: string) => {
-    update({ imageBase64, ...(url ? { url } : {}) })
+  const applyCapture = useCallback(async (imageBase64: string, url: string) => {
+    const compressed = await compressDataUrl(imageBase64)
+    update({ imageBase64: compressed, ...(url ? { url } : {}) })
   }, [update])
 
   // Register as active capture target when this card is active
@@ -125,7 +128,7 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
       </div>
 
       <input type="url" placeholder="粘贴链接 URL..." value={source.url ?? ''}
-        onChange={e => update({ url: e.target.value })} onClick={e => e.stopPropagation()}
+        onChange={e => update({ url: e.target.value })}
         className="w-full bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-700 focus:border-blue-500 focus:outline-none placeholder-gray-600" />
       {source.url && <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 text-xs truncate hover:underline -mt-1">{source.url}</a>}
 
@@ -136,7 +139,7 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
             className="absolute top-1 right-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover/img:opacity-100 transition-opacity">删除</button>
         </div>
       ) : (
-        <div onDrop={handleDrop} onDragOver={e => e.preventDefault()} onClick={e => { e.stopPropagation(); fileRef.current?.click() }}
+        <div onDrop={handleDrop} onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
           className={`border border-dashed rounded py-2.5 text-center text-xs transition-colors select-none ${
             isActive ? 'border-blue-600/50 text-blue-400/80' : 'border-gray-600 text-gray-600'
           }`}>
@@ -148,30 +151,22 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
 
       {/* Screen capture button */}
       <button
-        onClick={e => { e.stopPropagation(); handleCapture() }}
+        onClick={handleCapture}
         disabled={capturing}
         className="w-full py-1 border border-dashed border-gray-700 hover:border-blue-500 text-gray-600 hover:text-blue-400 text-xs rounded transition-colors disabled:opacity-50 select-none"
       >
         {capturing ? '选择捕获区域...' : '📷 捕获当前屏幕'}
       </button>
 
-      <textarea placeholder="备注..." value={source.note ?? ''} onChange={e => update({ note: e.target.value })} onClick={e => e.stopPropagation()}
+      <textarea placeholder="备注..." value={source.note ?? ''} onChange={e => update({ note: e.target.value })}
         rows={2} className="w-full bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-700 focus:border-blue-500 focus:outline-none placeholder-gray-600 resize-none" />
     </div>
   )
 }
 
 export default function DraftBlock({ chapterId, subChapterId, module }: Props) {
-  const { addDraftSource, activeSourceIds, setActiveSource } = useStore()
+  const { addDraftSource, activeSourceId, setActiveSource } = useStore()
   const sources = module.draft.sources ?? []
-  const activeSourceId = activeSourceIds[module.id]
-  const hasValidActive = activeSourceId && sources.some(s => s.id === activeSourceId)
-
-  useEffect(() => {
-    if (!hasValidActive && sources.length > 0) {
-      setActiveSource(module.id, sources[sources.length - 1].id)
-    }
-  }, [hasValidActive, sources, module.id, setActiveSource])
 
   return (
     <div className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-gray-700 min-h-[120px]">
@@ -179,7 +174,7 @@ export default function DraftBlock({ chapterId, subChapterId, module }: Props) {
         <SourceCard key={source.id} chapterId={chapterId} subChapterId={subChapterId} module={module}
           source={source} index={index} total={sources.length}
           isActive={source.id === activeSourceId}
-          onActivate={() => setActiveSource(module.id, source.id)} />
+          onActivate={() => setActiveSource(source.id)} />
       ))}
 
       <button onClick={() => addDraftSource(chapterId, subChapterId, module.id)}
@@ -187,9 +182,8 @@ export default function DraftBlock({ chapterId, subChapterId, module }: Props) {
         + 添加信息源
       </button>
 
-      <div className="text-[10px] text-gray-700 mt-1 space-y-1">
-        <p>💡 点击来源卡片选中它，然后按 <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-500">Ctrl</kbd>+<kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-500">V</kbd> 粘贴截图</p>
-        <p>🔗 拖拽此链接到书签栏快速收录：<a href={BOOKMARKLET_CODE} className="text-blue-600 hover:underline" title="拖到浏览器书签栏">📎 收录到VibeResearch</a></p>
+      <div className="text-[10px] text-gray-700 mt-1">
+        <p>💡 点击卡片选中后，按 <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-500">⌘V</kbd> 粘贴截图，或 <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-500">⌘⇧S</kbd> 全屏捕获</p>
       </div>
     </div>
   )

@@ -66,8 +66,8 @@ export interface AppState {
   activeChapterId: string | null
   activeSubChapterId: string | null
   aiSettings: AISettings
-  /** Per-module active source ID for draft paste targeting */
-  activeSourceIds: Record<string, string>
-  /** Currently focused module ID for report highlighting */
+  /** Globally active draft source ID (mutually exclusive with activeModuleId) */
+  activeSourceId: string | null
+  /** Globally active module ID for report highlight (mutually exclusive with activeSourceId) */
   activeModuleId: string | null
 }

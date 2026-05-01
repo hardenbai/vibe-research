@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import type { Module, DraftSource } from '@/lib/types'
 import { PROVIDER_CONFIGS } from '@/lib/providers'
+import { fileToCompressedDataUrl } from '@/lib/imageUtils'
+import { streamAI } from '@/lib/ai'
 
 interface Props {
   chapterId: string
@@ -55,33 +57,37 @@ function buildDraftPrompt(sources: DraftSource[], existingContent?: string) {
   return context ? `${context}\n\n请根据以上底稿材料，撰写一段专业、完整的研究报告内容。` : `请撰写一段专业的研究报告内容。`
 }
 
-async function callAI(providerId: string, apiKey: string, modelId: string, baseUrl: string | undefined, system: string, userPrompt: string): Promise<string> {
-  if (providerId === 'anthropic') {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: modelId, max_tokens: 2048, system, messages: [{ role: 'user', content: userPrompt }] }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error?.message || 'Anthropic API 错误')
-    return data.content?.[0]?.type === 'text' ? data.content[0].text : ''
-  }
-  const url = baseUrl ? `${baseUrl}/chat/completions` : 'https://api.openai.com/v1/chat/completions'
-  const res = await fetch(url, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model: modelId, max_tokens: 2048, messages: [{ role: 'system', content: system }, { role: 'user', content: userPrompt }] }),
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error?.message || 'API 错误')
-  return data.choices?.[0]?.message?.content ?? ''
+
+function ActiveBadge({ color }: { color: 'blue' | 'purple' }) {
+  const cls = color === 'purple'
+    ? 'bg-purple-600/20 text-purple-300 border-purple-500/20'
+    : 'bg-blue-600/20 text-blue-300 border-blue-500/20'
+  const dot = color === 'purple' ? 'bg-purple-400' : 'bg-blue-400'
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${dot}`} />当前
+    </span>
+  )
 }
 
 function ChartModule({ chapterId, subChapterId, module }: Props) {
-  const { updateReport } = useStore()
+  const { updateReport, setActiveModule, activeModuleId } = useStore()
   const fileRef = useRef<HTMLInputElement>(null)
   const { report } = module
-  const handleImage = (file: File) => { const r = new FileReader(); r.onload = e => updateReport(chapterId, subChapterId, module.id, { chartImage: e.target?.result as string }); r.readAsDataURL(file) }
+  const isActive = activeModuleId === module.id
+  const handleImage = async (file: File) => {
+    const compressed = await fileToCompressedDataUrl(file)
+    updateReport(chapterId, subChapterId, module.id, { chartImage: compressed })
+  }
   return (
-    <div className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-purple-900/50 min-h-[120px]">
+    <div onClick={() => setActiveModule(module.id)}
+      className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-purple-900/50 min-h-[120px] cursor-pointer">
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-purple-400' : 'text-gray-500'}`}>
+          图表
+          {isActive && <span className="ml-1.5"><ActiveBadge color="purple" /></span>}
+        </span>
+      </div>
       <input type="text" placeholder="图表标题（如：图1. XX走势图）" value={report.chartTitle ?? ''}
         onChange={e => updateReport(chapterId, subChapterId, module.id, { chartTitle: e.target.value })}
         className="w-full bg-gray-900 text-gray-200 text-sm font-medium rounded px-2 py-1.5 border border-gray-600 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
@@ -106,55 +112,89 @@ function ChartModule({ chapterId, subChapterId, module }: Props) {
 }
 
 function TextModule({ chapterId, subChapterId, module }: Props) {
-  const { updateReport, aiSettings, setActiveModule } = useStore()
+  const { updateReport, aiSettings, setActiveModule, activeModuleId } = useStore()
   const [viewpoint, setViewpoint] = useState('')
   const [instruction, setInstruction] = useState('')
   const [loading, setLoading] = useState<'expand' | 'generate' | null>(null)
   const [error, setError] = useState('')
+  const abortRef = useRef<AbortController | null>(null)
   const { report, draft } = module
-  const hasSources = (draft.sources ?? []).length > 0 && (draft.sources ?? []).some(s => s.url || s.note || s.imageBase64)
+  const isActive = activeModuleId === module.id
+  const hasSources = (draft.sources ?? []).some(s => s.url || s.note || s.imageBase64)
 
-  const append = (content: string) =>
-    updateReport(chapterId, subChapterId, module.id, {
-      content: report.content ? report.content + '\n\n' + content : content,
-    })
+  // Abort any in-flight stream when this module unmounts
+  useEffect(() => {
+    return () => abortRef.current?.abort()
+  }, [])
 
-  const handleExpand = async () => {
+  const runStream = async (mode: 'expand' | 'generate', system: string, userPrompt: string) => {
+    const apiKey = aiSettings.apiKeys[aiSettings.providerId]
+    if (!apiKey) { setError('请先在 AI 设置中填入 API Key'); return }
+    abortRef.current?.abort()
+    const ac = new AbortController()
+    abortRef.current = ac
+    setError(''); setLoading(mode)
+
+    // Anchor: insert separator + buffer where streamed chunks will be appended
+    const separator = report.content ? '\n\n' : ''
+    const anchor = report.content + separator
+    let acc = ''
+
+    try {
+      const provider = PROVIDER_CONFIGS.find(p => p.id === aiSettings.providerId)
+      await streamAI({
+        providerId: aiSettings.providerId,
+        apiKey,
+        modelId: aiSettings.modelId,
+        baseUrl: provider?.baseUrl,
+        system,
+        userPrompt,
+        signal: ac.signal,
+        onDelta: (chunk) => {
+          acc += chunk
+          updateReport(chapterId, subChapterId, module.id, { content: anchor + acc })
+        },
+      })
+      if (mode === 'expand') setViewpoint('')
+      else setInstruction('')
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError') return // user-cancelled, keep partial
+      setError(err instanceof Error ? err.message : 'AI 生成失败')
+    } finally {
+      if (abortRef.current === ac) abortRef.current = null
+      setLoading(null)
+    }
+  }
+
+  const handleExpand = () => {
     if (!viewpoint.trim()) return
-    const apiKey = aiSettings.apiKeys[aiSettings.providerId]
-    if (!apiKey) { setError('请先在 AI 设置中填入 API Key'); return }
-    setError(''); setLoading('expand')
-    try {
-      const provider = PROVIDER_CONFIGS.find(p => p.id === aiSettings.providerId)
-      const content = await callAI(aiSettings.providerId, apiKey, aiSettings.modelId, provider?.baseUrl, EXPAND_PROMPT,
-        buildExpandPrompt(viewpoint, draft.sources ?? [], report.content))
-      if (content) { append(content); setViewpoint('') }
-    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'AI 生成失败') } finally { setLoading(null) }
+    runStream('expand', EXPAND_PROMPT,
+      buildExpandPrompt(viewpoint, draft.sources ?? [], report.content))
   }
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!hasSources) { setError('请先在左侧底稿中填写来源信息'); return }
-    const apiKey = aiSettings.apiKeys[aiSettings.providerId]
-    if (!apiKey) { setError('请先在 AI 设置中填入 API Key'); return }
-    setError(''); setLoading('generate')
-    try {
-      const provider = PROVIDER_CONFIGS.find(p => p.id === aiSettings.providerId)
-      const basePrompt = buildDraftPrompt(draft.sources ?? [], report.content)
-      const extra = instruction.trim()
-      const userPrompt = extra ? `${basePrompt}\n\n额外要求：${extra}` : basePrompt
-      const content = await callAI(aiSettings.providerId, apiKey, aiSettings.modelId, provider?.baseUrl, DRAFT_PROMPT, userPrompt)
-      if (content) { append(content); setInstruction('') }
-    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'AI 生成失败') } finally { setLoading(null) }
+    const basePrompt = buildDraftPrompt(draft.sources ?? [], report.content)
+    const extra = instruction.trim()
+    const userPrompt = extra ? `${basePrompt}\n\n额外要求：${extra}` : basePrompt
+    runStream('generate', DRAFT_PROMPT, userPrompt)
   }
 
-  const handleFocus = () => setActiveModule(module.id)
-  const handleBlur = () => setActiveModule(null)
+  const handleStop = () => abortRef.current?.abort()
+
+  const handleActivate = () => setActiveModule(module.id)
 
   return (
-    <div className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-gray-700 min-h-[120px]">
+    <div onClick={handleActivate}
+      className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg border border-gray-700 min-h-[120px] cursor-text">
+      <div className="flex items-center justify-between">
+        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isActive ? 'text-blue-400' : 'text-gray-500'}`}>
+          报告
+          {isActive && <span className="ml-1.5"><ActiveBadge color="blue" /></span>}
+        </span>
+      </div>
       <textarea placeholder="在此撰写报告内容..." value={report.content}
         onChange={e => updateReport(chapterId, subChapterId, module.id, { content: e.target.value })}
-        onFocus={handleFocus} onBlur={handleBlur}
         rows={5}
         className="w-full bg-gray-900 text-gray-200 text-sm rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none placeholder-gray-500 resize-none leading-relaxed transition-all" />
 
@@ -165,10 +205,17 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
         <input type="text" placeholder="输入一句观点，AI 帮你续写..." value={viewpoint}
           onChange={e => setViewpoint(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleExpand() }}
           className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-blue-500 focus:outline-none placeholder-gray-500" />
-        <button onClick={handleExpand} disabled={loading !== null || !viewpoint.trim()}
-          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
-          {loading === 'expand' ? '生成中...' : 'AI 续写'}
-        </button>
+        {loading === 'expand' ? (
+          <button onClick={handleStop}
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors whitespace-nowrap">
+            停止
+          </button>
+        ) : (
+          <button onClick={handleExpand} disabled={loading !== null || !viewpoint.trim()}
+            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
+            AI 续写
+          </button>
+        )}
       </div>
 
       {/* 从底稿生成 */}
@@ -178,10 +225,17 @@ function TextModule({ chapterId, subChapterId, module }: Props) {
             value={instruction} onChange={e => setInstruction(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleGenerate() }}
             className="flex-1 bg-gray-900 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:border-green-500 focus:outline-none placeholder-gray-500" />
-          <button onClick={handleGenerate} disabled={loading !== null}
-            className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
-            {loading === 'generate' ? '生成中...' : '从底稿生成'}
-          </button>
+          {loading === 'generate' ? (
+            <button onClick={handleStop}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors whitespace-nowrap">
+              停止
+            </button>
+          ) : (
+            <button onClick={handleGenerate} disabled={loading !== null}
+              className="px-3 py-1.5 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 text-white text-xs rounded transition-colors whitespace-nowrap">
+              从底稿生成
+            </button>
+          )}
         </div>
       )}
     </div>
