@@ -7,57 +7,51 @@ import ReportBlock from './ReportBlock'
 import { useStore } from '@/lib/store'
 import type { Module } from '@/lib/types'
 
-interface Props {
-  chapterId: string
-  subChapterId: string | null
-  module: Module
-  index: number
-}
-
-export default function ModuleRow({ chapterId, subChapterId, module, index }: Props) {
+export default function ModuleRow({ chapterId, subChapterId, module, index }: {
+  chapterId: string; subChapterId: string | null; module: Module; index: number
+}) {
   const { deleteModule, activeModuleId } = useStore()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: module.id })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }
   const isActive = activeModuleId === module.id
   const isChart = module.type === 'chart'
 
   return (
-    <div ref={setNodeRef} style={style} className="flex gap-3 group animate-fade-in">
+    <div ref={setNodeRef}
+      style={{ display: 'flex', gap: 12, opacity: isDragging ? 0.35 : 1, transform: CSS.Transform.toString(transform), transition }}
+      className="group fade-up"
+    >
       {/* Gutter */}
-      <div className="flex flex-col items-center gap-2 pt-3 w-5 shrink-0">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingTop: 14, width: 20, flexShrink: 0 }}>
         <span {...attributes} {...listeners}
-          className="cursor-grab select-none transition-opacity opacity-0 group-hover:opacity-100"
-          style={{ color: 'var(--text-tertiary)', fontSize: 13 }}
-        >⠿</span>
+          className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab select-none"
+          style={{ color: 'var(--t4)', fontSize: 15 }}>⠿</span>
 
-        <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>{index + 1}</span>
+        <span style={{ fontSize: 11, color: 'var(--t4)', fontVariantNumeric: 'tabular-nums' }}>{index + 1}</span>
 
-        {/* Type pill */}
         <span style={{
-          fontSize: 9, fontWeight: 600, letterSpacing: '0.04em',
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
           padding: '2px 5px', borderRadius: 4,
-          background: isChart ? 'rgba(191,90,242,0.1)' : 'rgba(10,132,255,0.1)',
-          color: isChart ? '#bf5af2' : 'var(--accent)',
-          textTransform: 'uppercase',
+          background: isChart ? 'rgba(191,90,242,0.12)' : 'var(--blue-bg)',
+          color: isChart ? '#bf5af2' : 'var(--blue)',
+          border: `1px solid ${isChart ? 'rgba(191,90,242,0.25)' : 'var(--blue-border)'}`,
         }}>{isChart ? '图' : '文'}</span>
 
         <button onClick={() => { if (confirm('删除这个模块？')) deleteModule(chapterId, subChapterId, module.id) }}
           className="opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2 }}
+          style={{ color: 'var(--t4)', fontSize: 12, marginTop: 4, background: 'none', border: 'none', cursor: 'pointer' }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}
         >✕</button>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 grid grid-cols-2 gap-3 min-w-0">
+      {/* Two columns */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, minWidth: 0 }}>
         <DraftBlock chapterId={chapterId} subChapterId={subChapterId} module={module} />
-        {/* Active report card gets a blue ring */}
-        <div style={isActive ? {
+        <div style={{
           borderRadius: 12,
-          boxShadow: '0 0 0 2px var(--accent)',
-          transition: 'box-shadow 0.15s',
-        } : { transition: 'box-shadow 0.15s' }}>
+          boxShadow: isActive ? `0 0 0 2px var(--blue), 0 0 20px rgba(10,132,255,0.12)` : 'none',
+          transition: 'box-shadow 0.2s',
+        }}>
           <ReportBlock chapterId={chapterId} subChapterId={subChapterId} module={module} />
         </div>
       </div>

@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   description: "AI-powered financial research report system",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" className="h-full antialiased">
       <body className="h-full flex flex-col">{children}</body>
