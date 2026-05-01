@@ -27,7 +27,7 @@ function InlineEdit({ value, onCommit, textStyle = {} }: {
       onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
       onClick={e => e.stopPropagation()}
-      style={{ background: 'transparent', outline: 'none', color: 'var(--t1)', borderBottom: '1px solid var(--accent)', width: '100%', fontFamily: 'var(--font)', ...textStyle }}
+      style={{ background: 'transparent', outline: 'none', color: 'var(--st1)', borderBottom: '1px solid var(--accent)', width: '100%', fontFamily: 'var(--font)', ...textStyle }}
     />
   )
   return (
@@ -42,22 +42,22 @@ function SubChapterItem({ chapterId, sub, isActive }: { chapterId: string; sub: 
   const { setActiveSubChapter, renameSubChapter, deleteSubChapter } = useStore()
   return (
     <div onClick={() => setActiveSubChapter(chapterId, sub.id)}
-      className="group flex items-center gap-2 cursor-pointer rounded transition-all duration-100"
+      className="group flex items-center gap-2 cursor-pointer rounded-lg transition-all duration-150"
       style={{
-        padding: '4px 8px 4px 26px',
-        background: isActive ? 'var(--accent-light)' : 'transparent',
+        padding: '5px 8px 5px 28px',
+        background: isActive ? 'var(--sidebar-active)' : 'transparent',
         borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
       }}
-      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
+      onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'var(--sidebar-hover)' }}
       onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
     >
       <InlineEdit value={sub.title} onCommit={v => renameSubChapter(chapterId, sub.id, v)}
-        textStyle={{ fontSize: 12, color: isActive ? 'var(--accent)' : 'var(--t3)', flex: 1, fontFamily: 'var(--mono)' }} />
+        textStyle={{ fontSize: 12.5, color: isActive ? '#6eb0ff' : 'var(--st2)', flex: 1 }} />
       <button onClick={e => { e.stopPropagation(); if (confirm(`删除「${sub.title}」？`)) deleteSubChapter(chapterId, sub.id) }}
         className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        style={{ color: 'var(--t4)', fontSize: 10, background: 'none', border: 'none', cursor: 'pointer' }}
+        style={{ color: 'var(--st3)', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}>✕</button>
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--st3)' }}>✕</button>
     </div>
   )
 }
@@ -68,39 +68,39 @@ function ChapterItem({ chapter }: { chapter: Chapter }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: chapter.id })
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 }}>
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}>
       <div onClick={() => setActiveChapter(chapter.id)}
-        className="group flex items-center gap-1.5 cursor-pointer rounded transition-all duration-100"
+        className="group flex items-center gap-1.5 cursor-pointer rounded-lg transition-all duration-150"
         style={{
-          padding: '5px 8px',
-          background: isActive ? 'var(--accent-light)' : 'transparent',
+          padding: '7px 8px',
+          background: isActive ? 'var(--sidebar-active)' : 'transparent',
           borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
         }}
-        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
+        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'var(--sidebar-hover)' }}
         onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
       >
         <span {...attributes} {...listeners} onClick={e => e.stopPropagation()}
           className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab shrink-0 select-none"
-          style={{ color: 'var(--t4)', fontSize: 12 }}>⠿</span>
+          style={{ color: 'var(--st3)', fontSize: 14 }}>⠿</span>
 
         {(chapter.subChapters ?? []).length > 0 && (
           <button onClick={e => { e.stopPropagation(); toggleChapter(chapter.id) }}
-            className="shrink-0 transition-transform duration-100"
-            style={{ color: 'var(--t3)', fontSize: 9, background: 'none', border: 'none', cursor: 'pointer', transform: chapter.expanded ? 'rotate(90deg)' : 'none' }}>▶</button>
+            className="shrink-0 transition-transform duration-150"
+            style={{ color: 'var(--st3)', fontSize: 10, background: 'none', border: 'none', cursor: 'pointer', transform: chapter.expanded ? 'rotate(90deg)' : 'none' }}>›</button>
         )}
 
         <InlineEdit value={chapter.title} onCommit={v => renameChapter(chapter.id, v)}
-          textStyle={{ fontSize: 12.5, fontWeight: 500, color: isActive ? 'var(--accent)' : 'var(--t2)', fontFamily: 'var(--mono)' }} />
+          textStyle={{ fontSize: 13.5, fontWeight: 500, color: isActive ? '#6eb0ff' : 'var(--st1)' }} />
 
         <div className="ml-auto shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={e => { e.stopPropagation(); addSubChapter(chapter.id) }}
-            style={{ color: 'var(--t3)', fontSize: 14, lineHeight: 1, padding: '0 3px', background: 'none', border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t3)' }}>+</button>
+            style={{ color: 'var(--st3)', fontSize: 16, lineHeight: 1, padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6eb0ff' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--st3)' }}>+</button>
           <button onClick={e => { e.stopPropagation(); if (confirm(`删除「${chapter.title}」？`)) deleteChapter(chapter.id) }}
-            style={{ color: 'var(--t3)', fontSize: 10, padding: '0 3px', background: 'none', border: 'none', cursor: 'pointer' }}
+            style={{ color: 'var(--st3)', fontSize: 11, padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer' }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t3)' }}>✕</button>
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--st3)' }}>✕</button>
         </div>
       </div>
 
@@ -117,39 +117,24 @@ export default function ChapterSidebar() {
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
 
   return (
-    <aside className="shrink-0 flex flex-col h-full"
-      style={{ width: 220, background: 'var(--bg-1)', borderRight: '1px solid var(--b1)' }}>
+    <aside className="w-56 shrink-0 flex flex-col h-full sidebar-scroll"
+      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
 
       {/* Brand */}
-      <div style={{ padding: '16px 14px 14px', borderBottom: '1px solid var(--b1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Claude-style icon */}
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-            background: 'linear-gradient(135deg, #D4915A 0%, #C17840 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-              <path d="M6.5 1L9.5 4.5L12 3.5L10 7L12 8.5L8.5 9.5L8 12L6.5 9.5L5 12L4.5 9.5L1 8.5L3 7L1 3.5L3.5 4.5L6.5 1Z" fill="white" fillOpacity="0.9"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--t1)', letterSpacing: '-0.01em', fontFamily: 'var(--mono)' }}>
-              vibe-research
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--t4)', fontFamily: 'var(--mono)', marginTop: 1 }}>AI 研究报告系统</div>
-          </div>
+      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid var(--sidebar-border)' }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--st1)', letterSpacing: '-0.025em', lineHeight: 1.2 }}>
+          Vibe Research
         </div>
+        <div style={{ fontSize: 11.5, color: 'var(--st3)', marginTop: 3 }}>AI 研究报告系统</div>
       </div>
 
       {/* Label */}
-      <div style={{ padding: '12px 14px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--mono)' }}>chapters</span>
-        <span style={{ fontSize: 10, color: 'var(--t4)', fontFamily: 'var(--mono)' }}>{chapters.length}</span>
+      <div style={{ padding: '14px 16px 5px' }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--st3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>章节</span>
       </div>
 
       {/* Chapter list */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: '0 6px 8px' }}>
+      <div className="flex-1 overflow-y-auto sidebar-scroll" style={{ padding: '0 8px 8px' }}>
         <DndContext sensors={sensors} collisionDetection={closestCenter}
           onDragEnd={(e: DragEndEvent) => {
             const { active, over } = e
@@ -163,15 +148,17 @@ export default function ChapterSidebar() {
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '6px 6px 8px', borderTop: '1px solid var(--b1)' }}>
+      <div style={{ padding: '6px 8px 8px', borderTop: '1px solid var(--sidebar-border)' }}>
         <button onClick={addChapter}
-          className="w-full flex items-center gap-2 rounded transition-all duration-100"
-          style={{ padding: '7px 10px', color: 'var(--t3)', fontSize: 12.5, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', textAlign: 'left' }}
-          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'rgba(255,255,255,0.04)'; el.style.color = 'var(--t2)' }}
-          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--t3)' }}
+          className="w-full flex items-center gap-2.5 rounded-lg transition-all duration-150"
+          style={{ padding: '8px 10px', color: 'var(--st2)', fontSize: 13.5, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' }}
+          onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--sidebar-hover)'; el.style.color = 'var(--st1)' }}
+          onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'transparent'; el.style.color = 'var(--st2)' }}
         >
-          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>
-          new chapter
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+          </svg>
+          新建章节
         </button>
         <SettingsPanel />
       </div>
