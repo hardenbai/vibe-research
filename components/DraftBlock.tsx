@@ -7,21 +7,24 @@ import { setActiveCaptureHandler } from '@/lib/activeCapture'
 import { fileToCompressedDataUrl, compressDataUrl } from '@/lib/imageUtils'
 import type { Module, DraftSource } from '@/lib/types'
 
-interface Props {
-  chapterId: string
-  subChapterId: string | null
-  module: Module
+interface Props { chapterId: string; subChapterId: string | null; module: Module }
+interface SourceCardProps {
+  chapterId: string; subChapterId: string | null; module: Module
+  source: DraftSource; index: number; total: number
+  isActive: boolean; onActivate: () => void
 }
 
-interface SourceCardProps {
-  chapterId: string
-  subChapterId: string | null
-  module: Module
-  source: DraftSource
-  index: number
-  total: number
-  isActive: boolean
-  onActivate: () => void
+const inputBase: React.CSSProperties = {
+  width: '100%',
+  background: 'var(--bg-base)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  fontSize: 12,
+  padding: '6px 10px',
+  fontFamily: 'var(--font-system)',
+  outline: 'none',
+  transition: 'border-color 0.15s, box-shadow 0.15s',
 }
 
 function SourceCard({ chapterId, subChapterId, module, source, index, total, isActive, onActivate }: SourceCardProps) {
@@ -32,14 +35,11 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
 
   const update = useCallback((data: Partial<DraftSource>) =>
     updateDraftSource(chapterId, subChapterId, module.id, source.id, data),
-    [chapterId, subChapterId, module.id, source.id, updateDraftSource]
-  )
+    [chapterId, subChapterId, module.id, source.id, updateDraftSource])
 
   const handleImage = useCallback(async (file: File) => {
-    try {
-      const compressed = await fileToCompressedDataUrl(file)
-      update({ imageBase64: compressed })
-    } catch { /* ignore */ }
+    const compressed = await fileToCompressedDataUrl(file).catch(() => '')
+    if (compressed) update({ imageBase64: compressed })
   }, [update])
 
   const applyCapture = useCallback(async (imageBase64: string, url: string) => {
@@ -47,231 +47,149 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
     update({ imageBase64: compressed, ...(url ? { url } : {}) })
   }, [update])
 
-  useEffect(() => {
-    if (isActive) setActiveCaptureHandler(applyCapture)
-  }, [isActive, applyCapture])
-
-  useEffect(() => {
-    return () => setActiveCaptureHandler(null)
-  }, [])
+  useEffect(() => { if (isActive) setActiveCaptureHandler(applyCapture) }, [isActive, applyCapture])
+  useEffect(() => () => setActiveCaptureHandler(null), [])
 
   useEffect(() => {
     if (!isActive) return
-    const handlePaste = (e: ClipboardEvent) => {
+    const onPaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items
       if (!items) return
       for (const item of Array.from(items)) {
         if (item.type.startsWith('image/')) {
-          e.preventDefault()
-          setPasting(true)
-          const file = item.getAsFile()
-          if (file) handleImage(file)
-          setTimeout(() => setPasting(false), 500)
-          return
+          e.preventDefault(); setPasting(true)
+          const f = item.getAsFile(); if (f) handleImage(f)
+          setTimeout(() => setPasting(false), 500); return
         }
         if (item.type === 'text/plain') {
-          item.getAsString(text => {
-            const trimmed = text.trim()
-            if ((trimmed.startsWith('http://') || trimmed.startsWith('https://')) && !source.url) {
-              update({ url: trimmed })
-            }
+          item.getAsString(t => {
+            const s = t.trim()
+            if ((s.startsWith('http://') || s.startsWith('https://')) && !source.url) update({ url: s })
           })
         }
       }
     }
-    document.addEventListener('paste', handlePaste)
-    return () => document.removeEventListener('paste', handlePaste)
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
   }, [isActive, handleImage, source.url, update])
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file?.type.startsWith('image/')) handleImage(file)
+    const f = e.dataTransfer.files[0]
+    if (f?.type.startsWith('image/')) handleImage(f)
   }
 
   const handleCapture = async () => {
-    setActiveCaptureHandler(applyCapture)
-    setCapturing(true)
-    const result = await captureScreenshot()
-    setCapturing(false)
-    if (result) applyCapture(result.imageBase64, result.url)
+    setActiveCaptureHandler(applyCapture); setCapturing(true)
+    const r = await captureScreenshot(); setCapturing(false)
+    if (r) applyCapture(r.imageBase64, r.url)
   }
 
-  const inputStyle = {
-    background: 'var(--bg-surface)',
-    color: 'var(--text-primary)',
-    border: `1px solid ${isActive ? 'var(--border-strong)' : 'var(--border-subtle)'}`,
-    borderRadius: 6,
-    fontSize: 11,
-    padding: '5px 8px',
-    width: '100%',
-    fontFamily: 'var(--font-sans)',
-    outline: 'none',
-    transition: 'border-color 0.15s',
+  const focusStyle = (el: HTMLElement, focused: boolean) => {
+    el.style.borderColor = focused ? 'var(--accent-border)' : 'var(--border)'
+    el.style.boxShadow = focused ? '0 0 0 3px var(--accent-bg)' : 'none'
   }
 
   return (
-    <div
-      onClick={onActivate}
-      className="flex flex-col gap-2 p-2.5 rounded-lg relative transition-all duration-150 cursor-pointer"
+    <div onClick={onActivate}
+      className="flex flex-col gap-2 p-3 rounded-xl relative transition-all duration-150 cursor-pointer"
       style={isActive ? {
-        background: 'linear-gradient(135deg, rgba(200,168,75,0.05) 0%, rgba(200,168,75,0.02) 100%)',
-        border: '1px solid var(--border-gold)',
-        boxShadow: '0 0 12px var(--gold-glow)',
+        background: 'var(--bg-base)',
+        border: '1px solid var(--accent-border)',
+        boxShadow: '0 0 0 3px var(--accent-bg)',
       } : {
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
+        background: 'var(--bg-base)',
+        border: '1px solid var(--border)',
       }}
     >
-      {/* Active left bar */}
-      {isActive && (
-        <div
-          className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r"
-          style={{ background: 'var(--gold)' }}
-        />
-      )}
-
       {/* Header */}
-      <div className="flex items-center justify-between pl-1.5">
-        <span
-          className="text-[9px] font-mono tracking-widest uppercase"
-          style={{ color: isActive ? 'var(--gold)' : 'var(--text-muted)' }}
-        >
-          来源 {index + 1}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span style={{ fontSize: 11, fontWeight: 600, color: isActive ? 'var(--accent)' : 'var(--text-tertiary)' }}>
+            来源 {index + 1}
+          </span>
           {isActive && (
-            <span
-              className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
-              style={{
-                background: 'rgba(200,168,75,0.12)',
-                border: '1px solid var(--border-gold)',
-                color: 'var(--gold-bright)',
-                fontSize: 9,
-              }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: 'var(--gold)', animation: 'goldPulse 1.5s ease-in-out infinite' }}
-              />
+            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+              style={{ background: 'var(--accent-bg)', fontSize: 10, color: 'var(--accent)' }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', animation: 'pulse-dot 1.5s infinite' }} />
               当前
             </span>
           )}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {isActive && <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>⌘⇧S</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          {isActive && <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>⌘⇧S</span>}
           {total > 1 && (
-            <button
-              onClick={e => { e.stopPropagation(); removeDraftSource(chapterId, subChapterId, module.id, source.id) }}
-              className="text-[10px] transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
+            <button onClick={e => { e.stopPropagation(); removeDraftSource(chapterId, subChapterId, module.id, source.id) }}
+              style={{ color: 'var(--text-tertiary)', fontSize: 11 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)' }}
             >✕</button>
           )}
         </div>
       </div>
 
-      {/* URL input */}
-      <input
-        type="url"
-        placeholder="粘贴链接 URL..."
+      {/* URL */}
+      <input type="url" placeholder="粘贴链接 URL..."
         value={source.url ?? ''}
         onChange={e => update({ url: e.target.value })}
-        style={{ ...inputStyle, color: source.url ? 'var(--text-primary)' : undefined }}
-        onFocus={e => { (e.target as HTMLInputElement).style.borderColor = 'var(--gold-dim)' }}
-        onBlur={e => { (e.target as HTMLInputElement).style.borderColor = isActive ? 'var(--border-strong)' : 'var(--border-subtle)' }}
+        style={inputBase}
+        onFocus={e => focusStyle(e.target as HTMLElement, true)}
+        onBlur={e => focusStyle(e.target as HTMLElement, false)}
       />
       {source.url && (
-        <a
-          href={source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[10px] truncate -mt-1 hover:underline"
-          style={{ color: 'var(--gold-dim)', fontFamily: 'var(--font-mono)' }}
+        <a href={source.url} target="_blank" rel="noopener noreferrer"
+          className="text-[11px] truncate -mt-1 hover:underline"
+          style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}
         >{source.url}</a>
       )}
 
       {/* Image */}
       {source.imageBase64 ? (
         <div className="relative group/img">
-          <img
-            src={source.imageBase64}
-            alt="截图"
-            className="w-full rounded object-contain max-h-40"
-            style={{ border: '1px solid var(--border-default)' }}
-          />
-          <button
-            onClick={e => { e.stopPropagation(); update({ imageBase64: undefined }) }}
-            className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover/img:opacity-100 transition-opacity"
-            style={{ background: 'rgba(248,113,113,0.9)', color: 'white' }}
-          >删除</button>
+          <img src={source.imageBase64} alt="截图" className="w-full rounded-lg object-contain max-h-40"
+            style={{ border: '1px solid var(--border)' }} />
+          <button onClick={e => { e.stopPropagation(); update({ imageBase64: undefined }) }}
+            className="absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium opacity-0 group-hover/img:opacity-100 transition-opacity"
+            style={{ background: 'var(--red)', color: 'white' }}>删除</button>
         </div>
       ) : (
-        <div
-          onDrop={handleDrop}
-          onDragOver={e => e.preventDefault()}
-          onClick={() => fileRef.current?.click()}
-          className="rounded py-3 text-center text-[10px] transition-all duration-150 select-none cursor-pointer"
-          style={{
-            border: `1px dashed ${isActive ? 'var(--gold-dim)' : 'var(--border-default)'}`,
-            color: isActive ? 'var(--gold-dim)' : 'var(--text-muted)',
-          }}
+        <div onDrop={handleDrop} onDragOver={e => e.preventDefault()} onClick={() => fileRef.current?.click()}
+          className="rounded-lg py-4 text-center text-[11px] transition-all duration-150 cursor-pointer"
+          style={{ border: `1.5px dashed ${isActive ? 'var(--accent-border)' : 'var(--border)'}`, color: 'var(--text-tertiary)' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-surface)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent' }}
         >
-          {pasting ? (
-            <span style={{ color: 'var(--gold)', animation: 'goldPulse 1s infinite' }}>粘贴中...</span>
-          ) : (
-            <span>点击、拖拽或 <kbd className="px-1 py-0.5 rounded" style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 9 }}>⌘V</kbd> 粘贴截图</span>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }}
-          />
+          {pasting
+            ? <span style={{ color: 'var(--accent)' }}>粘贴中...</span>
+            : <span>点击、拖拽或 <kbd style={{ background: 'var(--bg-surface)', borderRadius: 4, padding: '1px 5px', fontFamily: 'var(--font-mono)', fontSize: 10 }}>⌘V</kbd> 粘贴截图</span>
+          }
+          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleImage(f) }} />
         </div>
       )}
 
-      {/* Capture button */}
-      <button
-        onClick={handleCapture}
-        disabled={capturing}
-        className="w-full py-1 text-[10px] rounded transition-all duration-150 disabled:opacity-40"
-        style={{
-          border: `1px dashed ${isActive ? 'var(--gold-dim)' : 'var(--border-subtle)'}`,
-          color: isActive ? 'var(--gold-dim)' : 'var(--text-muted)',
-          background: 'transparent',
-        }}
+      {/* Capture */}
+      <button onClick={handleCapture} disabled={capturing}
+        className="w-full py-1.5 rounded-lg text-[11px] font-medium transition-all duration-150 disabled:opacity-40"
+        style={{ background: 'var(--bg-surface)', color: 'var(--text-tertiary)', border: 'none' }}
         onMouseEnter={e => {
           const el = e.currentTarget as HTMLButtonElement
-          el.style.borderColor = 'var(--gold-dim)'
-          el.style.color = 'var(--gold)'
-          el.style.background = 'var(--gold-glow)'
+          el.style.background = 'var(--bg-card)'
+          el.style.color = 'var(--accent)'
         }}
         onMouseLeave={e => {
           const el = e.currentTarget as HTMLButtonElement
-          el.style.borderColor = isActive ? 'var(--gold-dim)' : 'var(--border-subtle)'
-          el.style.color = isActive ? 'var(--gold-dim)' : 'var(--text-muted)'
-          el.style.background = 'transparent'
+          el.style.background = 'var(--bg-surface)'
+          el.style.color = 'var(--text-tertiary)'
         }}
-      >
-        {capturing ? '选择捕获区域...' : '📷 捕获屏幕'}
-      </button>
+      >{capturing ? '选择捕获区域...' : '📷  捕获屏幕'}</button>
 
-      {/* Note textarea */}
-      <textarea
-        placeholder="备注..."
-        value={source.note ?? ''}
+      {/* Note */}
+      <textarea placeholder="备注..." value={source.note ?? ''} rows={2}
         onChange={e => update({ note: e.target.value })}
-        rows={2}
-        style={{
-          ...inputStyle,
-          resize: 'none',
-          lineHeight: 1.5,
-          color: 'var(--text-primary)',
-          fontFamily: 'var(--font-sans)',
-        }}
-        onFocus={e => { (e.target as HTMLTextAreaElement).style.borderColor = 'var(--gold-dim)' }}
-        onBlur={e => { (e.target as HTMLTextAreaElement).style.borderColor = isActive ? 'var(--border-strong)' : 'var(--border-subtle)' }}
+        style={{ ...inputBase, lineHeight: 1.5, resize: 'none' }}
+        onFocus={e => focusStyle(e.target as HTMLElement, true)}
+        onBlur={e => focusStyle(e.target as HTMLElement, false)}
       />
     </div>
   )
@@ -282,53 +200,35 @@ export default function DraftBlock({ chapterId, subChapterId, module }: Props) {
   const sources = module.draft.sources ?? []
 
   return (
-    <div
-      className="flex flex-col gap-2 p-3 rounded-lg min-h-[120px]"
-      style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-subtle)',
-      }}
-    >
+    <div className="flex flex-col gap-2 p-3 rounded-xl min-h-[120px]"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
       {sources.map((source, index) => (
-        <SourceCard
-          key={source.id}
-          chapterId={chapterId}
-          subChapterId={subChapterId}
-          module={module}
-          source={source}
-          index={index}
-          total={sources.length}
+        <SourceCard key={source.id} chapterId={chapterId} subChapterId={subChapterId} module={module}
+          source={source} index={index} total={sources.length}
           isActive={source.id === activeSourceId}
-          onActivate={() => setActiveSource(source.id)}
-        />
+          onActivate={() => setActiveSource(source.id)} />
       ))}
 
-      <button
-        onClick={() => addDraftSource(chapterId, subChapterId, module.id)}
-        className="w-full py-1.5 rounded-lg text-[10px] transition-all duration-150"
-        style={{
-          border: '1px dashed var(--border-default)',
-          color: 'var(--text-muted)',
-        }}
+      <button onClick={() => addDraftSource(chapterId, subChapterId, module.id)}
+        className="w-full py-2 rounded-lg text-xs font-medium transition-all duration-150"
+        style={{ background: 'transparent', color: 'var(--text-tertiary)', border: '1.5px dashed var(--border)' }}
         onMouseEnter={e => {
           const el = e.currentTarget as HTMLButtonElement
-          el.style.borderColor = 'var(--gold-dim)'
-          el.style.color = 'var(--gold)'
-          el.style.background = 'var(--gold-glow)'
+          el.style.borderColor = 'var(--accent-border)'
+          el.style.color = 'var(--accent)'
+          el.style.background = 'var(--accent-bg)'
         }}
         onMouseLeave={e => {
           const el = e.currentTarget as HTMLButtonElement
-          el.style.borderColor = 'var(--border-default)'
-          el.style.color = 'var(--text-muted)'
+          el.style.borderColor = 'var(--border)'
+          el.style.color = 'var(--text-tertiary)'
           el.style.background = 'transparent'
         }}
-      >
-        + 添加信息源
-      </button>
+      >+ 添加信息源</button>
 
-      <div className="text-[9px] font-mono mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-        点击卡片后可 <kbd className="px-1 py-0.5 rounded" style={{ background: 'var(--bg-surface)', fontSize: 9 }}>⌘V</kbd> 粘贴截图 或 <kbd className="px-1 py-0.5 rounded" style={{ background: 'var(--bg-surface)', fontSize: 9 }}>⌘⇧S</kbd> 全屏捕获
-      </div>
+      <p style={{ fontSize: 10, color: 'var(--text-tertiary)', opacity: 0.7, marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+        点击卡片后 <kbd style={{ background: 'var(--bg-base)', borderRadius: 3, padding: '0 4px' }}>⌘V</kbd> 粘贴 · <kbd style={{ background: 'var(--bg-base)', borderRadius: 3, padding: '0 4px' }}>⌘⇧S</kbd> 全屏捕获
+      </p>
     </div>
   )
 }

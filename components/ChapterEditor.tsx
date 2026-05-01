@@ -17,133 +17,100 @@ interface SectionProps {
   subChapterId: string | null
   title: string
   onRename: (v: string) => void
+  onDelete?: () => void
   modules: Module[]
   level: 'chapter' | 'subchapter'
   anchorId: string
 }
 
-function Section({ chapterId, subChapterId, title, onRename, modules, level, anchorId }: SectionProps) {
-  const { addModule, reorderModules, deleteSubChapter } = useStore()
+function Section({ chapterId, subChapterId, title, onRename, onDelete, modules, level, anchorId }: SectionProps) {
+  const { addModule, reorderModules } = useStore()
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
-
   const [draft, setDraft] = useState(title)
-  useEffect(() => { setDraft(title) }, [title])
+  useEffect(() => setDraft(title), [title])
   const commit = () => { if (draft !== title) onRename(draft) }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const from = modules.findIndex(m => m.id === active.id)
-    const to = modules.findIndex(m => m.id === over.id)
-    reorderModules(chapterId, subChapterId, from, to)
+    reorderModules(chapterId, subChapterId,
+      modules.findIndex(m => m.id === active.id),
+      modules.findIndex(m => m.id === over.id))
   }
 
   const isSub = level === 'subchapter'
 
   return (
-    <section id={anchorId} className="space-y-3 scroll-mt-24">
-      {/* Section heading */}
-      <div
-        className="flex items-center gap-3"
-        style={isSub ? { paddingTop: 20, borderTop: '1px solid var(--border-subtle)' } : {}}
-      >
-        {isSub && (
-          <span
-            className="text-[10px] font-mono tracking-widest uppercase shrink-0"
-            style={{ color: 'var(--text-muted)' }}
-          >§</span>
-        )}
+    <section id={anchorId} className="scroll-mt-16">
+      {/* Divider for sub-sections */}
+      {isSub && <div style={{ height: 1, background: 'var(--separator)', margin: '28px 0 24px' }} />}
+
+      {/* Title row */}
+      <div className="flex items-center gap-3 mb-4">
         <input
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="flex-1 bg-transparent focus:outline-none pb-0.5 transition-colors"
           style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: isSub ? 16 : 20,
-            fontWeight: isSub ? 500 : 600,
+            flex: 1,
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
             color: 'var(--text-primary)',
-            borderBottom: '1px solid transparent',
+            fontFamily: 'var(--font-system)',
+            fontSize: isSub ? 17 : 22,
+            fontWeight: isSub ? 500 : 600,
+            letterSpacing: isSub ? '-0.01em' : '-0.02em',
+            lineHeight: 1.2,
           }}
           placeholder={isSub ? '子章节标题' : '章节标题'}
-          onFocus={e => { (e.target as HTMLInputElement).style.borderBottomColor = 'var(--border-strong)' }}
-          onBlurCapture={e => { (e.target as HTMLInputElement).style.borderBottomColor = 'transparent' }}
         />
-        {isSub && subChapterId && (
-          <button
-            onClick={() => { if (confirm(`删除「${title}」？`)) deleteSubChapter(chapterId, subChapterId) }}
-            className="text-[10px] transition-colors shrink-0 px-1"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#f87171' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
-          >✕</button>
+        {onDelete && (
+          <button onClick={onDelete}
+            className="shrink-0 opacity-0 hover:opacity-100 transition-opacity"
+            style={{ color: 'var(--text-tertiary)', fontSize: 12, padding: '2px 6px' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--red)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)' }}
+          >删除</button>
         )}
       </div>
 
+      {/* Modules */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
-          {modules.map((m, index) => (
-            <ModuleRow
-              key={m.id}
-              chapterId={chapterId}
-              subChapterId={subChapterId}
-              module={m}
-              index={index}
-            />
-          ))}
+          <div className="space-y-3">
+            {modules.map((m, index) => (
+              <ModuleRow key={m.id} chapterId={chapterId} subChapterId={subChapterId} module={m} index={index} />
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
 
-      {/* Add module buttons */}
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={() => addModule(chapterId, subChapterId, 'text')}
-          className="flex-1 py-2 rounded-lg text-xs transition-all duration-150"
-          style={{
-            border: '1px dashed var(--border-default)',
-            color: 'var(--text-muted)',
-          }}
-          onMouseEnter={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--gold-dim)'
-            el.style.color = 'var(--gold)'
-            el.style.background = 'var(--gold-glow)'
-          }}
-          onMouseLeave={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--border-default)'
-            el.style.color = 'var(--text-muted)'
-            el.style.background = 'transparent'
-          }}
-        >
-          + 文字模块
-        </button>
-        <button
-          onClick={() => addModule(chapterId, subChapterId, 'chart')}
-          className="flex-1 py-2 rounded-lg text-xs transition-all duration-150"
-          style={{
-            border: '1px dashed var(--border-default)',
-            color: 'var(--text-muted)',
-          }}
-          onMouseEnter={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = '#7e22ce'
-            el.style.color = '#c084fc'
-            el.style.background = 'rgba(168,85,247,0.06)'
-          }}
-          onMouseLeave={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--border-default)'
-            el.style.color = 'var(--text-muted)'
-            el.style.background = 'transparent'
-          }}
-        >
-          + 图表模块
-        </button>
+      {/* Add module */}
+      <div className="flex gap-2 mt-3">
+        {[
+          { type: 'text' as const, label: '+ 文字模块' },
+          { type: 'chart' as const, label: '+ 图表模块' },
+        ].map(({ type, label }) => (
+          <button key={type} onClick={() => addModule(chapterId, subChapterId, type)}
+            className="flex-1 py-2 rounded-xl text-xs font-medium transition-all duration-150"
+            style={{ background: 'var(--bg-surface)', color: 'var(--text-tertiary)', border: 'none' }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = 'var(--bg-card)'
+              el.style.color = 'var(--text-secondary)'
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLButtonElement
+              el.style.background = 'var(--bg-surface)'
+              el.style.color = 'var(--text-tertiary)'
+            }}
+          >{label}</button>
+        ))}
       </div>
     </section>
   )
@@ -152,18 +119,11 @@ function Section({ chapterId, subChapterId, title, onRename, modules, level, anc
 function modulesToMarkdown(modules: Module[]): string[] {
   const lines: string[] = []
   for (const m of modules) {
-    if (m.type === 'text') {
-      if (m.report.content?.trim()) {
-        lines.push(m.report.content.trim())
-        lines.push('')
-      }
+    if (m.type === 'text' && m.report.content?.trim()) {
+      lines.push(m.report.content.trim(), '')
     } else if (m.type === 'chart') {
-      if (m.report.chartTitle) {
-        lines.push(`**${m.report.chartTitle}**`)
-      }
-      if (m.report.chartSource) {
-        lines.push(`*资料来源：${m.report.chartSource}*`)
-      }
+      if (m.report.chartTitle) lines.push(`**${m.report.chartTitle}**`)
+      if (m.report.chartSource) lines.push(`*资料来源：${m.report.chartSource}*`)
       if (m.report.chartTitle || m.report.chartSource) lines.push('')
     }
   }
@@ -171,11 +131,7 @@ function modulesToMarkdown(modules: Module[]): string[] {
 }
 
 export default function ChapterEditor() {
-  const {
-    chapters, activeChapterId, activeSubChapterId,
-    renameChapter, renameSubChapter, addSubChapter,
-  } = useStore()
-
+  const { chapters, activeChapterId, activeSubChapterId, renameChapter, renameSubChapter, addSubChapter, deleteSubChapter } = useStore()
   const chapter = chapters.find(c => c.id === activeChapterId)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -187,132 +143,93 @@ export default function ChapterEditor() {
       lines.push(`## ${sub.title}`, '')
       lines.push(...modulesToMarkdown(sub.modules))
     }
-    const content = lines.join('\n')
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${chapter.title}.md`
-    a.click()
+    Object.assign(document.createElement('a'), { href: url, download: `${chapter.title}.md` }).click()
     URL.revokeObjectURL(url)
   }
 
   useEffect(() => {
     if (!chapter) return
-    const targetId = activeSubChapterId
-      ? `sub-${activeSubChapterId}`
-      : `chapter-${chapter.id}`
-    const el = document.getElementById(targetId)
-    if (el && scrollRef.current) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    const id = activeSubChapterId ? `sub-${activeSubChapterId}` : `chapter-${chapter.id}`
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [activeChapterId, activeSubChapterId, chapter])
 
   if (!chapter) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ background: 'var(--bg-surface)' }}>
-        <p className="font-display text-2xl font-medium" style={{ color: 'var(--text-muted)' }}>
-          选择或新建章节
-        </p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
-          从左侧导航开始撰写
-        </p>
+      <div className="flex-1 flex flex-col items-center justify-center gap-2"
+        style={{ background: 'var(--bg-base)' }}>
+        <p style={{ fontSize: 17, fontWeight: 500, color: 'var(--text-tertiary)' }}>从左侧选择章节</p>
+        <p style={{ fontSize: 13, color: 'var(--text-tertiary)', opacity: 0.6 }}>或创建一个新章节开始撰写</p>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--bg-surface)' }}>
-      {/* Column headers */}
-      <div
-        className="shrink-0 flex items-center gap-3 px-6 py-3"
-        style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-panel)' }}
-      >
-        <div className="w-6 shrink-0" />
-        <div className="flex-1 grid grid-cols-2 gap-3">
-          <div
-            className="text-[10px] font-mono tracking-[0.12em] uppercase px-3"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            底稿
-          </div>
-          <div
-            className="text-[10px] font-mono tracking-[0.12em] uppercase px-3"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            报告
-          </div>
+    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+      {/* Toolbar */}
+      <div className="shrink-0 flex items-center justify-between px-8 py-3"
+        style={{ borderBottom: '1px solid var(--separator)', background: 'var(--bg-panel)' }}>
+        {/* Column labels */}
+        <div className="flex-1 grid grid-cols-2 gap-4" style={{ paddingLeft: 28 }}>
+          {['底稿', '报告'].map(label => (
+            <span key={label} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              {label}
+            </span>
+          ))}
         </div>
-        <button
-          onClick={exportMarkdown}
-          title="导出为 Markdown 文件"
-          className="shrink-0 text-[10px] font-mono tracking-wider px-2.5 py-1 rounded transition-all duration-150"
-          style={{
-            border: '1px solid var(--border-default)',
-            color: 'var(--text-muted)',
-          }}
+        {/* Export */}
+        <button onClick={exportMarkdown}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-150"
+          style={{ background: 'var(--bg-surface)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500 }}
           onMouseEnter={e => {
             const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--gold-dim)'
-            el.style.color = 'var(--gold)'
-            el.style.background = 'var(--gold-glow)'
+            el.style.background = 'var(--bg-card)'
+            el.style.color = 'var(--text-primary)'
           }}
           onMouseLeave={e => {
             const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--border-default)'
-            el.style.color = 'var(--text-muted)'
-            el.style.background = 'transparent'
+            el.style.background = 'var(--bg-surface)'
+            el.style.color = 'var(--text-secondary)'
           }}
         >
-          ↓ MD
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v7M3.5 5.5l3 3 3-3M1.5 10h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          导出 MD
         </button>
       </div>
 
       {/* Scrollable content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-        <Section
-          chapterId={chapter.id}
-          subChapterId={null}
-          title={chapter.title}
-          onRename={v => renameChapter(chapter.id, v)}
-          modules={chapter.modules}
-          level="chapter"
-          anchorId={`chapter-${chapter.id}`}
-        />
+      <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ padding: '32px 40px' }}>
+        <div style={{ maxWidth: 1200 }}>
+          <Section chapterId={chapter.id} subChapterId={null} title={chapter.title}
+            onRename={v => renameChapter(chapter.id, v)}
+            modules={chapter.modules} level="chapter" anchorId={`chapter-${chapter.id}`} />
 
-        {chapter.subChapters.map(sub => (
-          <Section
-            key={sub.id}
-            chapterId={chapter.id}
-            subChapterId={sub.id}
-            title={sub.title}
-            onRename={v => renameSubChapter(chapter.id, sub.id, v)}
-            modules={sub.modules}
-            level="subchapter"
-            anchorId={`sub-${sub.id}`}
-          />
-        ))}
+          {chapter.subChapters.map(sub => (
+            <Section key={sub.id} chapterId={chapter.id} subChapterId={sub.id} title={sub.title}
+              onRename={v => renameSubChapter(chapter.id, sub.id, v)}
+              onDelete={() => { if (confirm(`删除「${sub.title}」？`)) deleteSubChapter(chapter.id, sub.id) }}
+              modules={sub.modules} level="subchapter" anchorId={`sub-${sub.id}`} />
+          ))}
 
-        <button
-          onClick={() => addSubChapter(chapter.id)}
-          className="w-full py-2.5 rounded-lg text-xs transition-all duration-150"
-          style={{
-            border: '1px dashed var(--border-subtle)',
-            color: 'var(--text-muted)',
-          }}
-          onMouseEnter={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--border-strong)'
-            el.style.color = 'var(--text-secondary)'
-          }}
-          onMouseLeave={e => {
-            const el = e.currentTarget as HTMLButtonElement
-            el.style.borderColor = 'var(--border-subtle)'
-            el.style.color = 'var(--text-muted)'
-          }}
-        >
-          + 添加子章节
-        </button>
+          {/* Add sub-chapter */}
+          <div style={{ marginTop: 32 }}>
+            <div style={{ height: 1, background: 'var(--separator)', marginBottom: 16 }} />
+            <button onClick={() => addSubChapter(chapter.id)}
+              className="flex items-center gap-2 transition-all duration-150"
+              style={{ color: 'var(--text-tertiary)', fontSize: 13 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              添加子章节
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

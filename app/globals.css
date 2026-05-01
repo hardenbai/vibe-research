@@ -1,151 +1,112 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens ───────────────────────────────────────────── */
+/* ─── Apple Design Tokens ─────────────────────────────────────── */
 :root {
-  /* backgrounds */
-  --bg-base:       #070c17;
-  --bg-panel:      #0b1120;
-  --bg-surface:    #0f172a;
-  --bg-card:       #111827;
-  --bg-card-hover: #14213d;
+  /* backgrounds — macOS dark mode hierarchy */
+  --bg-base:        #000000;
+  --bg-panel:       #111111;
+  --bg-surface:     #1c1c1e;
+  --bg-card:        #2c2c2e;
+  --bg-card-hover:  #3a3a3c;
+  --bg-input:       #1c1c1e;
 
-  /* gold accent */
-  --gold:          #c8a84b;
-  --gold-dim:      #8f6e28;
-  --gold-glow:     rgba(200, 168, 75, 0.12);
-  --gold-bright:   #e8c96e;
+  /* single accent — iOS dark mode blue */
+  --accent:         #0a84ff;
+  --accent-bg:      rgba(10, 132, 255, 0.12);
+  --accent-border:  rgba(10, 132, 255, 0.3);
+  --accent-hover:   #1a8eff;
 
-  /* teal for AI/success */
-  --teal:          #2dd4bf;
-  --teal-dim:      #0d9488;
+  /* green for success / AI generate */
+  --green:          #30d158;
+  --green-bg:       rgba(48, 209, 88, 0.1);
+  --green-border:   rgba(48, 209, 88, 0.25);
 
-  /* red for stop/danger */
-  --red-accent:    #f87171;
+  /* red */
+  --red:            #ff453a;
+  --red-bg:         rgba(255, 69, 58, 0.1);
+  --red-border:     rgba(255, 69, 58, 0.25);
 
-  /* text */
-  --text-primary:  #dde6f5;
-  --text-secondary:#7e94b2;
-  --text-muted:    #3d5070;
-  --text-gold:     #c8a84b;
+  /* text — Apple's exact dark mode text hierarchy */
+  --text-primary:   #f5f5f7;
+  --text-secondary: #98989d;
+  --text-tertiary:  #48484a;
 
   /* borders */
-  --border-subtle: #111e33;
-  --border-default:#1a2d48;
-  --border-strong: #253d62;
-  --border-gold:   rgba(200, 168, 75, 0.3);
+  --border:         rgba(255, 255, 255, 0.08);
+  --border-medium:  rgba(255, 255, 255, 0.12);
+  --border-strong:  rgba(255, 255, 255, 0.18);
 
-  /* fonts */
-  --font-display:  var(--font-display, "Playfair Display", Georgia, serif);
-  --font-sans:     var(--font-sans, "DM Sans", system-ui, sans-serif);
-  --font-mono:     var(--font-mono, "JetBrains Mono", "Fira Code", monospace);
+  /* separator (thinner than border) */
+  --separator:      rgba(255, 255, 255, 0.06);
+
+  /* font — system stack: SF Pro on Apple devices */
+  --font-system:    -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                    "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-mono:      "SF Mono", ui-monospace, "Cascadia Code",
+                    "Fira Code", "Consolas", monospace;
+  --font-rounded:   ui-rounded, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ─── Tailwind theme extensions ───────────────────────────────── */
 @theme inline {
   --color-background: var(--bg-base);
   --color-foreground: var(--text-primary);
-  --font-sans:        var(--font-sans);
-  --font-mono:        var(--font-mono);
-
-  /* gold palette */
-  --color-gold-300: #e8c96e;
-  --color-gold-400: #c8a84b;
-  --color-gold-500: #9d7e32;
-  --color-gold-600: #7a5f1e;
-  --color-gold-glow: rgba(200, 168, 75, 0.12);
-
-  /* navy palette */
-  --color-navy-950: #070c17;
-  --color-navy-900: #0b1120;
-  --color-navy-850: #0f172a;
-  --color-navy-800: #111827;
-  --color-navy-750: #14213d;
-  --color-navy-700: #1a2d48;
-  --color-navy-600: #253d62;
-  --color-navy-500: #3a5a8a;
-
-  /* teal */
-  --color-teal-400: #2dd4bf;
-  --color-teal-600: #0d9488;
+  --font-sans: var(--font-system);
+  --font-mono: var(--font-mono);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
-}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
 
 body {
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-system);
+  font-size: 13px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
-/* ─── Custom Scrollbar ─────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* ─── Custom Scrollbar — thin, Apple style ─────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 2px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-dim);
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ─── Focus rings ──────────────────────────────────────────────── */
+input:focus, textarea:focus, select:focus { outline: none; }
+
+/* ─── Textarea ─────────────────────────────────────────────────── */
+textarea { resize: none; }
+
+/* ─── Frosted glass utility ────────────────────────────────────── */
+.glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
-/* ─── Typography ───────────────────────────────────────────────── */
-.font-display {
-  font-family: var(--font-display);
-}
-.font-mono {
-  font-family: var(--font-mono);
+/* ─── Animations ───────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ─── Custom Animations ────────────────────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes goldPulse {
+@keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
+  50%       { opacity: 0.4; }
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.25s ease-out forwards;
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-/* ─── Gold active indicator ────────────────────────────────────── */
-.active-glow {
-  box-shadow: 0 0 0 1px var(--border-gold),
-              0 0 16px var(--gold-glow),
-              inset 0 0 0 1px var(--border-gold);
-}
-
-/* ─── Textarea Reset ───────────────────────────────────────────── */
-textarea {
-  resize: none;
-}
-
-/* ─── Input focus ring override ────────────────────────────────── */
-input[type="text"]:focus,
-input[type="url"]:focus,
-input[type="password"]:focus,
-select:focus {
-  outline: none;
+/* ─── Apple-style focus ring ───────────────────────────────────── */
+.focus-ring:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-bg), 0 0 0 1px var(--accent-border);
 }
