@@ -4,13 +4,19 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import type {
-  AppState, Chapter, SubChapter, Module,
+  AppState, Chapter, SubChapter, Module, Project,
   DraftSource, ReportBlock, AISettings, ProviderId, ModuleType,
   ModelOption,
 } from './types'
 import { DEFAULT_SETTINGS, DEFAULT_PROVIDER_MODELS } from './providers'
 
 interface Actions {
+  // project
+  addProject: () => void
+  renameProject: (id: string, title: string) => void
+  deleteProject: (id: string) => void
+  setActiveProject: (id: string) => void
+
   // chapter
   addChapter: () => void
   renameChapter: (id: string, title: string) => void
@@ -67,6 +73,21 @@ function makeChapter(n: number): Chapter {
   return { id: uuid(), title: `第${n}章`, modules: [makeModule()], subChapters: [], expanded: true }
 }
 
+function makeProject(n: number): Project {
+  return { id: uuid(), title: `新项目 ${n}`, createdAt: Date.now(), chapters: [makeChapter(1)] }
+}
+
+/** Update the chapters array of the active project */
+function updateActiveChapters(
+  projects: Project[],
+  activeProjectId: string | null,
+  fn: (chapters: Chapter[]) => Chapter[]
+): Project[] {
+  return projects.map(p =>
+    p.id === activeProjectId ? { ...p, chapters: fn(p.chapters) } : p
+  )
+}
+
 function mapModules(
   chapters: Chapter[],
   chapterId: string,
@@ -100,36 +121,92 @@ function mapSources(
   )
 }
 
+/** Selector: get chapters of the active project */
+export const selectChapters = (s: AppState & Actions) =>
+  s.projects.find(p => p.id === s.activeProjectId)?.chapters ?? []
+
+const initialProject = makeProject(1)
+
 export const useStore = create<AppState & Actions>()(
   persist(
     (set) => ({
-      chapters: [makeChapter(1)],
+      projects: [initialProject],
+      activeProjectId: initialProject.id,
       activeChapterId: null,
       activeSubChapterId: null,
       aiSettings: DEFAULT_SETTINGS,
       activeSourceId: null,
       activeModuleId: null,
 
+      // --- project ---
+      addProject: () =>
+        set(s => {
+          const project = makeProject(s.projects.length + 1)
+          return {
+            projects: [...s.projects, project],
+            activeProjectId: project.id,
+            activeChapterId: null,
+            activeSubChapterId: null,
+          }
+        }),
+
+      renameProject: (id, title) =>
+        set(s => {
+          const safe = title.trim() || '未命名项目'
+          return { projects: s.projects.map(p => p.id === id ? { ...p, title: safe } : p) }
+        }),
+
+      deleteProject: (id) =>
+        set(s => {
+          const projects = s.projects.filter(p => p.id !== id)
+          const activeProjectId = s.activeProjectId === id ? (projects[0]?.id ?? null) : s.activeProjectId
+          return {
+            projects,
+            activeProjectId,
+            activeChapterId: null,
+            activeSubChapterId: null,
+            activeSourceId: null,
+            activeModuleId: null,
+          }
+        }),
+
+      setActiveProject: (id) =>
+        set({
+          activeProjectId: id,
+          activeChapterId: null,
+          activeSubChapterId: null,
+          activeSourceId: null,
+          activeModuleId: null,
+        }),
+
       // --- chapter ---
       addChapter: () =>
         set(s => {
-          const chapter = makeChapter(s.chapters.length + 1)
-          return { chapters: [...s.chapters, chapter], activeChapterId: chapter.id, activeSubChapterId: null }
+          const chapters = s.projects.find(p => p.id === s.activeProjectId)?.chapters ?? []
+          const chapter = makeChapter(chapters.length + 1)
+          return {
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs => [...chs, chapter]),
+            activeChapterId: chapter.id,
+            activeSubChapterId: null,
+          }
         }),
 
       renameChapter: (id, title) =>
         set(s => {
           const safe = title.trim() || '未命名章节'
-          return { chapters: s.chapters.map(c => c.id === id ? { ...c, title: safe } : c) }
+          return {
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+              chs.map(c => c.id === id ? { ...c, title: safe } : c)
+            ),
+          }
         }),
 
       deleteChapter: (id) =>
         set(s => {
-          const chapters = s.chapters.filter(c => c.id !== id)
+          const chapters = (s.projects.find(p => p.id === s.activeProjectId)?.chapters ?? []).filter(c => c.id !== id)
           const activeChapterId = s.activeChapterId === id ? (chapters[0]?.id ?? null) : s.activeChapterId
-          // also clear ephemeral active selection if we deleted the chapter that owned it
           return {
-            chapters,
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs => chs.filter(c => c.id !== id)),
             activeChapterId,
             activeSubChapterId: null,
             activeSourceId: null,
@@ -138,33 +215,42 @@ export const useStore = create<AppState & Actions>()(
         }),
 
       reorderChapters: (from, to) =>
-        set(s => {
-          const chapters = [...s.chapters]
-          const [moved] = chapters.splice(from, 1)
-          chapters.splice(to, 0, moved)
-          return { chapters }
-        }),
+        set(s => ({
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs => {
+            const arr = [...chs]
+            const [moved] = arr.splice(from, 1)
+            arr.splice(to, 0, moved)
+            return arr
+          }),
+        })),
 
       toggleChapter: (id) =>
         set(s => ({
-          chapters: s.chapters.map(c => c.id === id ? { ...c, expanded: !c.expanded } : c),
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            chs.map(c => c.id === id ? { ...c, expanded: !c.expanded } : c)
+          ),
         })),
 
       setActiveChapter: (id) =>
         set(s => ({
           activeChapterId: id,
           activeSubChapterId: null,
-          chapters: s.chapters.map(c => c.id === id ? { ...c, expanded: true } : c),
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            chs.map(c => c.id === id ? { ...c, expanded: true } : c)
+          ),
         })),
 
       // --- sub-chapter ---
       addSubChapter: (chapterId) =>
         set(s => {
-          const chapter = s.chapters.find(c => c.id === chapterId)!
+          const chapters = s.projects.find(p => p.id === s.activeProjectId)?.chapters ?? []
+          const chapter = chapters.find(c => c.id === chapterId)!
           const sub = makeSubChapter((chapter.subChapters ?? []).length + 1)
           return {
-            chapters: s.chapters.map(c =>
-              c.id === chapterId ? { ...c, subChapters: [...(c.subChapters ?? []), sub], expanded: true } : c
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+              chs.map(c =>
+                c.id === chapterId ? { ...c, subChapters: [...(c.subChapters ?? []), sub], expanded: true } : c
+              )
             ),
             activeChapterId: chapterId,
             activeSubChapterId: sub.id,
@@ -175,20 +261,24 @@ export const useStore = create<AppState & Actions>()(
         set(s => {
           const safe = title.trim() || '未命名子章节'
           return {
-            chapters: s.chapters.map(c =>
-              c.id === chapterId
-                ? { ...c, subChapters: (c.subChapters ?? []).map(sc => sc.id === subId ? { ...sc, title: safe } : sc) }
-                : c
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+              chs.map(c =>
+                c.id === chapterId
+                  ? { ...c, subChapters: (c.subChapters ?? []).map(sc => sc.id === subId ? { ...sc, title: safe } : sc) }
+                  : c
+              )
             ),
           }
         }),
 
       deleteSubChapter: (chapterId, subId) =>
         set(s => ({
-          chapters: s.chapters.map(c =>
-            c.id === chapterId
-              ? { ...c, subChapters: (c.subChapters ?? []).filter(sc => sc.id !== subId) }
-              : c
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            chs.map(c =>
+              c.id === chapterId
+                ? { ...c, subChapters: (c.subChapters ?? []).filter(sc => sc.id !== subId) }
+                : c
+            )
           ),
           activeSubChapterId: s.activeSubChapterId === subId ? null : s.activeSubChapterId,
           activeSourceId: null,
@@ -201,23 +291,29 @@ export const useStore = create<AppState & Actions>()(
       // --- modules ---
       addModule: (chapterId, subChapterId, type = 'text') =>
         set(s => ({
-          chapters: mapModules(s.chapters, chapterId, subChapterId, ms => [...ms, makeModule(type)]),
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapModules(chs, chapterId, subChapterId, ms => [...ms, makeModule(type)])
+          ),
         })),
 
       reorderModules: (chapterId, subChapterId, from, to) =>
         set(s => ({
-          chapters: mapModules(s.chapters, chapterId, subChapterId, ms => {
-            const arr = [...ms]
-            const [moved] = arr.splice(from, 1)
-            arr.splice(to, 0, moved)
-            return arr
-          }),
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapModules(chs, chapterId, subChapterId, ms => {
+              const arr = [...ms]
+              const [moved] = arr.splice(from, 1)
+              arr.splice(to, 0, moved)
+              return arr
+            })
+          ),
         })),
 
       updateReport: (chapterId, subChapterId, moduleId, report) =>
         set(s => ({
-          chapters: mapModules(s.chapters, chapterId, subChapterId, ms =>
-            ms.map(m => m.id === moduleId ? { ...m, report: { ...m.report, ...report } } : m)
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapModules(chs, chapterId, subChapterId, ms =>
+              ms.map(m => m.id === moduleId ? { ...m, report: { ...m.report, ...report } } : m)
+            )
           ),
         })),
 
@@ -226,8 +322,9 @@ export const useStore = create<AppState & Actions>()(
         set(s => {
           const newSource = makeSource()
           return {
-            chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs => [...srcs, newSource]),
-            // auto-activate the newly added card so paste/⌘⇧S land on it
+            projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+              mapSources(chs, chapterId, subChapterId, moduleId, srcs => [...srcs, newSource])
+            ),
             activeSourceId: newSource.id,
             activeModuleId: null,
           }
@@ -235,11 +332,12 @@ export const useStore = create<AppState & Actions>()(
 
       deleteModule: (chapterId, subChapterId, moduleId) =>
         set(s => ({
-          chapters: mapModules(s.chapters, chapterId, subChapterId, ms => ms.filter(m => m.id !== moduleId)),
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapModules(chs, chapterId, subChapterId, ms => ms.filter(m => m.id !== moduleId))
+          ),
           activeModuleId: s.activeModuleId === moduleId ? null : s.activeModuleId,
         })),
 
-      // Activation: source and module are mutually exclusive — only one card highlighted globally
       setActiveSource: (sourceId) =>
         set({ activeSourceId: sourceId, activeModuleId: null }),
 
@@ -248,15 +346,19 @@ export const useStore = create<AppState & Actions>()(
 
       removeDraftSource: (chapterId, subChapterId, moduleId, sourceId) =>
         set(s => ({
-          chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs =>
-            srcs.length > 1 ? srcs.filter(src => src.id !== sourceId) : srcs
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapSources(chs, chapterId, subChapterId, moduleId, srcs =>
+              srcs.length > 1 ? srcs.filter(src => src.id !== sourceId) : srcs
+            )
           ),
         })),
 
       updateDraftSource: (chapterId, subChapterId, moduleId, sourceId, data) =>
         set(s => ({
-          chapters: mapSources(s.chapters, chapterId, subChapterId, moduleId, srcs =>
-            srcs.map(src => src.id === sourceId ? { ...src, ...data } : src)
+          projects: updateActiveChapters(s.projects, s.activeProjectId, chs =>
+            mapSources(chs, chapterId, subChapterId, moduleId, srcs =>
+              srcs.map(src => src.id === sourceId ? { ...src, ...data } : src)
+            )
           ),
         })),
 
@@ -284,7 +386,6 @@ export const useStore = create<AppState & Actions>()(
       addProviderModel: (providerId, model) =>
         set(s => {
           const existing = s.aiSettings.customModels[providerId] ?? DEFAULT_PROVIDER_MODELS[providerId] ?? []
-          // Avoid duplicates
           if (existing.some(m => m.id === model.id)) return s
           return {
             aiSettings: {
@@ -298,7 +399,6 @@ export const useStore = create<AppState & Actions>()(
         set(s => {
           const existing = s.aiSettings.customModels[providerId] ?? DEFAULT_PROVIDER_MODELS[providerId] ?? []
           const filtered = existing.filter(m => m.id !== modelId)
-          // If filtered equals default, remove custom entry to fall back to default
           const defaultModels = DEFAULT_PROVIDER_MODELS[providerId] ?? []
           const isSameAsDefault = filtered.length === defaultModels.length &&
             filtered.every((m, i) => m.id === defaultModels[i]?.id && m.label === defaultModels[i]?.label)
@@ -324,7 +424,6 @@ export const useStore = create<AppState & Actions>()(
             aiSettings: {
               ...s.aiSettings,
               customModels: newCustomModels,
-              // Also reset modelId if current one doesn't exist in default
               modelId: DEFAULT_PROVIDER_MODELS[providerId]?.[0]?.id ?? s.aiSettings.modelId,
             },
           }
@@ -332,7 +431,7 @@ export const useStore = create<AppState & Actions>()(
     }),
     {
       name: 'vibe-research-store',
-      version: 5,
+      version: 6,
       // activeSourceId / activeModuleId are ephemeral UI state — don't persist
       partialize: (s) => {
         const { activeSourceId: _a, activeModuleId: _b, ...rest } = s
@@ -343,9 +442,7 @@ export const useStore = create<AppState & Actions>()(
         const state = persisted as Record<string, unknown>
 
         const migrateModule = (m: Record<string, unknown>) => {
-          // v2: add type
           const withType: Record<string, unknown> = { ...m, type: (m.type as string) ?? 'text' }
-          // v3: convert flat draft → sources array
           const draft = withType.draft as Record<string, unknown> | undefined
           const hasSources = Array.isArray(draft?.sources)
           if (!hasSources) {
@@ -370,8 +467,6 @@ export const useStore = create<AppState & Actions>()(
           modules: ((c.modules as Record<string, unknown>[]) ?? []).map(migrateModule),
         })
 
-        const chapters = ((state.chapters as Record<string, unknown>[]) ?? []).map(migrateChapter)
-
         // v4: add customModels to aiSettings
         const aiSettings = (state.aiSettings as Record<string, unknown> | undefined) ?? {}
         const migratedAISettings = {
@@ -383,9 +478,28 @@ export const useStore = create<AppState & Actions>()(
         const { activeSourceIds: _drop, ...rest } = state as Record<string, unknown> & { activeSourceIds?: unknown }
         void _drop
 
+        // v6: wrap chapters in projects array (if upgrading from pre-v6)
+        let projects: unknown[]
+        let activeProjectId: string
+
+        if (version < 6 && Array.isArray(state.chapters)) {
+          const chapters = (state.chapters as Record<string, unknown>[]).map(migrateChapter)
+          activeProjectId = crypto.randomUUID()
+          projects = [{ id: activeProjectId, title: '默认项目', createdAt: Date.now(), chapters }]
+        } else {
+          projects = (state.projects as unknown[]) ?? []
+          activeProjectId = (state.activeProjectId as string) ?? (projects[0] as Record<string, unknown>)?.id as string ?? crypto.randomUUID()
+          // still migrate chapters inside each project
+          projects = (projects as Record<string, unknown>[]).map(p => ({
+            ...p,
+            chapters: ((p.chapters as Record<string, unknown>[]) ?? []).map(migrateChapter),
+          }))
+        }
+
         return {
           ...rest,
-          chapters,
+          projects,
+          activeProjectId,
           activeSubChapterId: (state.activeSubChapterId as string | null) ?? null,
           aiSettings: migratedAISettings,
           activeSourceId: null,

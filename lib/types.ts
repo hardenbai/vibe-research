@@ -61,8 +61,16 @@ export interface AISettings {
   customModels: Partial<Record<ProviderId, ModelOption[]>>
 }
 
-export interface AppState {
+export interface Project {
+  id: string
+  title: string
+  createdAt: number
   chapters: Chapter[]
+}
+
+export interface AppState {
+  projects: Project[]
+  activeProjectId: string | null
   activeChapterId: string | null
   activeSubChapterId: string | null
   aiSettings: AISettings

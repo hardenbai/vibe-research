@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useStore } from '@/lib/store'
+import { useStore, selectChapters } from '@/lib/store'
 import ModuleRow from './ModuleRow'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -114,7 +114,9 @@ function countChars(modules: Module[]): number {
 }
 
 export default function ChapterEditor() {
-  const { chapters, activeChapterId, activeSubChapterId, renameChapter, renameSubChapter, addSubChapter, deleteSubChapter } = useStore()
+  const chapters = useStore(selectChapters)
+  const { projects, activeProjectId, activeChapterId, activeSubChapterId, renameChapter, renameSubChapter, addSubChapter, deleteSubChapter } = useStore()
+  const activeProject = projects.find(p => p.id === activeProjectId)
   const chapter = chapters.find(c => c.id === activeChapterId)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -163,6 +165,22 @@ export default function ChapterEditor() {
           <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--t4)', flexShrink: 0 }}>
             <path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
+          {activeProject && (
+            <>
+              <span style={{
+                fontSize: 12, fontWeight: 500, color: 'var(--accent)',
+                background: 'var(--accent-light)', borderRadius: 5,
+                padding: '2px 7px', flexShrink: 0, whiteSpace: 'nowrap',
+              }}>
+                {activeProject.title}
+              </span>
+              {chapter && (
+                <svg width="11" height="11" viewBox="0 0 10 10" fill="none" style={{ color: 'var(--t4)', flexShrink: 0, margin: '0 1px' }}>
+                  <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </>
+          )}
           {chapter ? (
             <>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
