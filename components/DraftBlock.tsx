@@ -2,7 +2,6 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { useStore } from '@/lib/store'
-import { captureScreenshot } from '@/lib/screenCapture'
 import { setActiveCaptureHandler } from '@/lib/activeCapture'
 import { fileToCompressedDataUrl, compressDataUrl } from '@/lib/imageUtils'
 import type { Module, DraftSource } from '@/lib/types'
@@ -28,7 +27,6 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
   const fileRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [pasting, setPasting] = useState(false)
-  const [capturing, setCapturing] = useState(false)
   const [focused, setFocused] = useState(false)
 
   const update = useCallback((d: Partial<DraftSource>) =>
@@ -142,14 +140,6 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
         </div>
       )}
 
-      {/* Capture */}
-      <button onClick={async (e) => { e.stopPropagation(); setActiveCaptureHandler(applyCapture); setCapturing(true); const r = await captureScreenshot(); setCapturing(false); if (r) applyCapture(r.imageBase64, r.url) }}
-        disabled={capturing}
-        style={{ padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'var(--input-bg)', color: 'var(--t3)', border: '1px solid var(--input-border)', cursor: 'pointer', transition: 'all 0.15s', opacity: capturing ? 0.5 : 1 }}
-        onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--accent-hover)'; el.style.borderColor = 'var(--accent-border)' }}
-        onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--input-bg)'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--input-border)' }}
-      >{capturing ? '选择捕获区域...' : '📷  捕获屏幕'}</button>
-
       {/* Note */}
       <textarea placeholder="备注..." value={source.note ?? ''} rows={2} onChange={e => update({ note: e.target.value })}
         style={inp({ resize: 'none', lineHeight: 1.55 })}
@@ -198,14 +188,6 @@ function SourceCard({ chapterId, subChapterId, module, source, index, total, isA
               </div>
             )}
           </div>
-
-          {/* Capture */}
-          <button onClick={async () => { setActiveCaptureHandler(applyCapture); setCapturing(true); const r = await captureScreenshot(); setCapturing(false); if (r) applyCapture(r.imageBase64, r.url) }}
-            disabled={capturing}
-            style={{ padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 500, background: 'var(--input-bg)', color: 'var(--t3)', border: '1px solid var(--input-border)', cursor: 'pointer', transition: 'all 0.15s', opacity: capturing ? 0.5 : 1 }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--card)'; el.style.color = 'var(--accent-hover)'; el.style.borderColor = 'var(--accent-border)' }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLButtonElement; el.style.background = 'var(--input-bg)'; el.style.color = 'var(--t3)'; el.style.borderColor = 'var(--input-border)' }}
-          >{capturing ? '选择捕获区域...' : '📷  捕获屏幕'}</button>
 
           {/* Note */}
           <div>

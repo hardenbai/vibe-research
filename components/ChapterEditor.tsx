@@ -135,17 +135,19 @@ export default function ChapterEditor() {
     a.click(); URL.revokeObjectURL(a.href)
   }
 
-  if (!chapter) return (
+  if (chapters.length === 0) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--ws-bg)', gap: 8 }}>
       <p style={{ fontSize: 20, fontWeight: 600, color: 'var(--t3)' }}>选择或新建章节</p>
       <p style={{ fontSize: 14, color: 'var(--t4)' }}>从左侧导航开始撰写</p>
     </div>
   )
 
-  const activeSub = activeSubChapterId ? chapter.subChapters.find(s => s.id === activeSubChapterId) : null
-  const totalModules = chapter.modules.length + chapter.subChapters.reduce((n, s) => n + s.modules.length, 0)
-  const allModules = [chapter.modules, ...chapter.subChapters.map(s => s.modules)]
-  const totalChars = allModules.reduce((n, ms) => n + countChars(ms), 0)
+  const activeSub = chapter && activeSubChapterId ? chapter.subChapters.find(s => s.id === activeSubChapterId) : null
+  const totalModules = chapters.reduce((n, c) => n + c.modules.length + c.subChapters.reduce((m, s) => m + s.modules.length, 0), 0)
+  const totalChars = chapters.reduce((n, c) => {
+    const allMods = [c.modules, ...c.subChapters.map(s => s.modules)]
+    return n + allMods.reduce((m, ms) => m + countChars(ms), 0)
+  }, 0)
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--ws-bg)' }}>
@@ -161,18 +163,24 @@ export default function ChapterEditor() {
           <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--t4)', flexShrink: 0 }}>
             <path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {chapter.title}
-          </span>
-          {activeSub && (
+          {chapter ? (
             <>
-              <svg width="11" height="11" viewBox="0 0 10 10" fill="none" style={{ color: 'var(--t4)', flexShrink: 0, margin: '0 1px' }}>
-                <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span style={{ fontSize: 13, color: 'var(--t3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {activeSub.title}
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {chapter.title}
               </span>
+              {activeSub && (
+                <>
+                  <svg width="11" height="11" viewBox="0 0 10 10" fill="none" style={{ color: 'var(--t4)', flexShrink: 0, margin: '0 1px' }}>
+                    <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span style={{ fontSize: 13, color: 'var(--t3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {activeSub.title}
+                  </span>
+                </>
+              )}
             </>
+          ) : (
+            <span style={{ fontSize: 14, color: 'var(--t3)' }}>全部章节</span>
           )}
         </div>
 
@@ -187,50 +195,60 @@ export default function ChapterEditor() {
           <span style={{ fontSize: 13, color: 'var(--t3)' }}>
             <span style={{ fontWeight: 600, color: 'var(--t2)' }}>{totalChars.toLocaleString()}</span> 字
           </span>
-          <button onClick={exportMd}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-              background: 'var(--accent)', color: '#fff',
-              border: 'none', cursor: 'pointer', transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
-          >
-            <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            导出
-          </button>
+          {chapter && (
+            <button onClick={exportMd}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '6px 14px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+                background: 'var(--accent)', color: '#fff',
+                border: 'none', cursor: 'pointer', transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 10.5h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              导出
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Scrollable content */}
+      {/* Scrollable content — all chapters */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '36px 40px 80px' }}>
         <div style={{ maxWidth: 1280 }}>
-          <Section chapterId={chapter.id} subChapterId={null} title={chapter.title}
-            onRename={v => renameChapter(chapter.id, v)}
-            modules={chapter.modules} level="chapter" anchorId={`chap-${chapter.id}`} />
+          {chapters.map((chap, ci) => (
+            <div key={chap.id}>
+              {ci > 0 && (
+                <hr style={{ border: 'none', borderTop: '2px solid var(--divider)', margin: '56px 0 48px' }} />
+              )}
 
-          {chapter.subChapters.map(sub => (
-            <Section key={sub.id} chapterId={chapter.id} subChapterId={sub.id} title={sub.title}
-              onRename={v => renameSubChapter(chapter.id, sub.id, v)}
-              onDelete={() => { if (confirm(`删除「${sub.title}」？`)) deleteSubChapter(chapter.id, sub.id) }}
-              modules={sub.modules} level="subchapter" anchorId={`sub-${sub.id}`} />
+              <Section chapterId={chap.id} subChapterId={null} title={chap.title}
+                onRename={v => renameChapter(chap.id, v)}
+                modules={chap.modules} level="chapter" anchorId={`chap-${chap.id}`} />
+
+              {chap.subChapters.map(sub => (
+                <Section key={sub.id} chapterId={chap.id} subChapterId={sub.id} title={sub.title}
+                  onRename={v => renameSubChapter(chap.id, sub.id, v)}
+                  onDelete={() => { if (confirm(`删除「${sub.title}」？`)) deleteSubChapter(chap.id, sub.id) }}
+                  modules={sub.modules} level="subchapter" anchorId={`sub-${sub.id}`} />
+              ))}
+
+              <div style={{ marginTop: 44, paddingTop: 20, borderTop: '1px solid var(--divider)' }}>
+                <button onClick={() => addSubChapter(chap.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  添加子章节
+                </button>
+              </div>
+            </div>
           ))}
-
-          <div style={{ marginTop: 44, paddingTop: 20, borderTop: '1px solid var(--divider)' }}>
-            <button onClick={() => addSubChapter(chapter.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--t4)', background: 'none', border: 'none', cursor: 'pointer', transition: 'color 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--t4)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              添加子章节
-            </button>
-          </div>
         </div>
       </div>
     </div>
