@@ -35,5 +35,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# dist
-dist/
+# dist builds are committed for static hosting
+# dist/
